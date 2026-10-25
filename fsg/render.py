@@ -310,7 +310,7 @@ def draw_cell(c, cell: G.Cell, x: float, y: float, w: float, h: float,
         p, _, ph = fitted(cell.alt, MATH, INK_SOFT, inner, band_alt, cfg.alt_size, 4.2,
                           align=TA_LEFT)
         draw_para(c, p, x + pad, top, inner, ph)
-    top -= band_alt + 2.0
+    top -= band_alt + 3.0
 
     # the symbol sits at the top of its band, so all the slack falls below it,
     # which is where the subscripts go

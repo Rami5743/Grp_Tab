@@ -47,6 +47,26 @@ def big_parens(body: str, grow: int = 6) -> str:
     return big + "(</font>" + body + big + ")</font>"
 
 
+def q_markup(q: int) -> str:
+    """``q`` written as the prime power it is:  9 becomes 3^2, 7 stays 7."""
+    pp = arith.prime_power(q)
+    if pp is None:
+        return str(q)
+    p, a = pp
+    return power(p, a)
+
+
+def q_parens(q) -> str:
+    """``(q)`` as it follows a group symbol, with brackets grown when q is a
+    proper prime power and so carries an exponent."""
+    if q is None:
+        return "(q)"
+    pp = arith.prime_power(q)
+    if pp is None or pp[1] == 1:
+        return f"({q})"
+    return big_parens(power(pp[0], pp[1]), grow=5)
+
+
 def factorisation_markup(fac: dict[int, int]) -> str:
     """``p1^e1 . p2^e2 . ...``, with a space after each dot.
 
@@ -474,15 +494,15 @@ TITS = ("2F4", 0, 2)
 #: but its derived subgroup is, and it lives elsewhere.
 HOLE_KEY: list[tuple[str, str]] = [
     (f"A{sub(2)}(1)", f"C{sub(3)}"),
-    (f"A{sub(1)}(4), A{sub(1)}(5)", f"A{sub(5)}   [ A{sub(4)}(1) ]"),
-    (f"A{sub(1)}(9)", f"A{sub(6)}   [ A{sub(5)}(1) ]"),
+    (f"A{sub(1)}{q_parens(4)}, A{sub(1)}(5)", f"A{sub(5)}   [ A{sub(4)}(1) ]"),
+    (f"A{sub(1)}{q_parens(9)}", f"A{sub(6)}   [ A{sub(5)}(1) ]"),
     (f"A{sub(2)}(2)", f"A{sub(1)}(7)"),
     (f"A{sub(3)}(2)", f"A{sub(8)}   [ A{sub(7)}(1) ]"),
     (f"{sup(2)}A{sub(3)}(2)", f"B{sub(2)}(3)"),
     (f"C{sub('n')}(q),  q even", f"B{sub('n')}(q)"),
     (f"B{sub(2)}(2)\u2032", f"A{sub(6)}   [ A{sub(5)}(1) ]"),
     (f"G{sub(2)}(2)\u2032", f"{sup(2)}A{sub(2)}(3)"),
-    (f"{sup(2)}G{sub(2)}(3)\u2032", f"A{sub(1)}(8)"),
+    (f"{sup(2)}G{sub(2)}(3)\u2032", f"A{sub(1)}{q_parens(8)}"),
 ]
 
 
@@ -498,8 +518,8 @@ ALT_DESCRIPTIONS: dict[tuple, list[str]] = {
 
 #: the same, for the alternating groups in the q = 1 row, keyed by n in A_n(1)
 F1_ALT_DESCRIPTIONS: dict[int, list[str]] = {
-    4: [f"A{sub(1)}(4)", f"A{sub(1)}(5)"],
-    5: [f"A{sub(1)}(9)", f"B{sub(2)}(2)\u2032"],
+    4: [f"A{sub(1)}{q_parens(4)}", f"A{sub(1)}(5)"],
+    5: [f"A{sub(1)}{q_parens(9)}", f"B{sub(2)}(2)\u2032"],
     7: [f"A{sub(3)}(2)"],
 }
 
@@ -515,7 +535,7 @@ def alt_descriptions(fam_key: str, n, q: int) -> list[str]:
     for a generic-rank column, where the B = C rule still applies."""
     out = list(ALT_DESCRIPTIONS.get((fam_key, n, q), ()))
     if fam_key == "B" and q % 2 == 0:            # B_n(q) = C_n(q), q even
-        out.append(f"C{sub(n if n is not None else 'n')}({q})")
+        out.append(f"C{sub(n if n is not None else 'n')}{q_parens(q)}")
     return out
 
 
@@ -579,7 +599,7 @@ def lie_cell(fam: Family, n, q, show_alt: bool = True) -> Cell | None:
     if q is None and fam.q_form is not None:   # Suzuki and Ree: q = p**(2m+1)
         symbol = fam.symbol(n_str) + big_parens(power(fam.q_form, "2m+1"))
     else:
-        symbol = f"{fam.symbol(n_str)}({q_str})"
+        symbol = fam.symbol(n_str) + q_parens(q)
     alt = ""
     if show_alt and q is not None:
         alt = _alt_line(alt_descriptions(fam.key, n if fam.ranked else 0, q))
