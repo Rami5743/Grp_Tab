@@ -125,6 +125,7 @@ class PosterConfig:
     dots_frac: float = 0.42          # width/height of an ellipsis row or column
     gap: float = 3.0                 # gap between neighbouring cells
     series_gap: float = 22.0         # extra gap between sporadic series
+    block_gap: float = 22.0          # gap between one rank block and the next
 
     margin: float = 46.0
     axis_w: float = 52.0
@@ -156,7 +157,7 @@ class PosterConfig:
 
 @dataclass
 class Column:
-    kind: str                      # "cells" | "dots"
+    kind: str                      # "cells" | "dots" | "gap"
     width: float
     family: G.Family | None = None
     rank: int | None = None        # None => generic rank
@@ -182,6 +183,9 @@ def build_columns(cfg: PosterConfig) -> list[Column]:
     cols = [Column("cells", cfg.cell_w, None, None, header=f"C{G.sub('p')}",
                    block_title="cyclic", block_span=1)]
 
+    def spacer() -> None:
+        cols.append(Column("gap", cfg.block_gap))
+
     def block(title: str, entries) -> None:
         start = len(cols)
         for fam, rank in entries:
@@ -193,7 +197,9 @@ def build_columns(cfg: PosterConfig) -> list[Column]:
             cols[start].block_span = len(cols) - start
 
     for n in range(1, cfg.rank_max + 1):
+        spacer()
         block(f"rank {n}", G.families_of_rank(n))
+    spacer()
     cols.append(Column("dots", cfg.cell_w * cfg.dots_frac))
     start = len(cols)
     for key in G.RANKED_ORDER:
@@ -542,7 +548,7 @@ class Poster:
             x = self.col_x(i)
             for j, row in enumerate(self.rows):
                 y = self.row_y(j)
-                if col.kind == "dots" or row.kind == "dots":
+                if col.kind != "cells" or row.kind != "cells":
                     if col.kind == "dots" and row.kind == "cells":
                         draw_dots(c, x, y, col.width, row.height, vertical=False)
                     elif row.kind == "dots" and col.kind == "cells":

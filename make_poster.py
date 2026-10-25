@@ -39,6 +39,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     g = p.add_argument_group("geometry (points; 1 pt = 1/72 in)")
     g.add_argument("--cell-w", type=float, default=cfg.cell_w)
     g.add_argument("--cell-h", type=float, default=cfg.cell_h)
+    g.add_argument("--block-gap", type=float, default=cfg.block_gap,
+                   help="gap between one rank block and the next")
     g.add_argument("--dots-frac", type=float, default=cfg.dots_frac,
                    help="size of an ellipsis row/column, as a fraction of a cell")
     g.add_argument("--margin", type=float, default=cfg.margin)
@@ -58,6 +60,7 @@ def config_from_args(a: argparse.Namespace) -> PosterConfig:
         extra_q=tuple(int(t) for t in a.extra_q.split(",") if t.strip()),
         sporadic_cols=a.sporadic_cols, show_alt_names=not a.no_alt_names,
         cell_w=a.cell_w, cell_h=a.cell_h, dots_frac=a.dots_frac, margin=a.margin,
+        block_gap=a.block_gap,
         symbol_size=a.symbol_size, order_size=a.order_size,
         max_order_lines=a.max_order_lines, title=a.title, subtitle=a.subtitle,
     )

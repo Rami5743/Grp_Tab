@@ -62,7 +62,9 @@ group of rank 1, then of rank 2, and so on:
 A_1 | A_2 B_2 G_2 ²A_2 ²B_2 ²G_2 | A_3 B_3 C_3 ²A_3 | A_4 B_4 C_4 D_4 F_4 ²A_4 ²D_4 ³D_4 ²F_4 | …
 ```
 
-Inside a block the families run through the three types in turn: the Chevalley
+A small gap separates one rank block from the next (`--block-gap`), as it does
+the series of the sporadic strip.  Inside a block the families run through the
+three types in turn: the Chevalley
 groups `A, B, C, D` and the exceptional ones of that rank, then the Steinberg
 groups `²A, ²D, ³D_4, ²E_6`, then Suzuki and Ree.  A family starts at the rank below which it would
 duplicate another one (`B_1 = A_1`, `C_2 = B_2`, `D_3 = A_3`, `²D_3 = ²A_3`),
@@ -104,6 +106,7 @@ the ones used for `out/finite_simple_groups.pdf`:
 | `--no-f1-row` | off | drop the `q = 1` row, and with it the alternating groups |
 | `--sporadic-cols` | 26 | columns of the sporadic block (26 = a single strip) |
 | `--cell-w`, `--cell-h` | 100, 106 | cell size in points |
+| `--block-gap` | 22 | gap in points between one rank block and the next |
 | `--dots-frac` | 0.42 | size of an ellipsis row/column, relative to a cell |
 | `--symbol-size`, `--order-size` | 20, 14 | font size caps;  each line is set as large as its box allows |
 | `--max-order-lines` | 7 | lines the order line may wrap onto |
@@ -112,7 +115,7 @@ the ones used for `out/finite_simple_groups.pdf`:
 
 The page size is computed from the grid, so changing `--rank-max` or
 `--q-max` simply makes a larger or smaller poster.  The defaults give
-**223 × 97 cm**.
+**231 × 97 cm**.
 
 ## How it is put together
 
