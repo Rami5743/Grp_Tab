@@ -522,17 +522,21 @@ class Poster:
             if row.kind == "dots":
                 draw_dots(c, x, y, cfg.axis_w, row.height, vertical=True)
                 continue
-            label = "q" if row.q is None else str(row.q)
+            # a prime power is labelled as one:  the row of q = 9 reads 3^2,
+            # with its decimal value underneath so it matches the cells
+            if row.q is None:
+                label, note = "q", ""
+            elif row.q == 1:
+                label, note = "1", "\u201cF\u2081\u201d"
+            else:
+                pr, e = prime_power(row.q)
+                label = G.power(pr, e)
+                note = str(row.q) if e > 1 else "prime"
             p, _, ph = fitted(label, MATH + "-Bold", INK, cfg.axis_w - 8, row.height,
                               17.0, 9.0)
             draw_para(c, p, x + 4, y + (row.height + ph) / 2, cfg.axis_w - 8, ph)
-            if row.q is None:
+            if not note:
                 continue
-            if row.q == 1:
-                note = "\u201cF\u2081\u201d"
-            else:
-                pr, e = prime_power(row.q)
-                note = f"{pr}{G.sup(e)}" if e > 1 else "prime"
             p2, _, ph2 = fitted(note, MATH, INK_FAINT, cfg.axis_w - 6, 12, 7.0, 5.0)
             draw_para(c, p2, x + 3, y + (row.height - ph) / 2 - 1, cfg.axis_w - 6, ph2)
 

@@ -39,7 +39,8 @@ is what tells the two apart.
 **The vertical axis is the field size `q`.**  The `q = 1` row comes first,
 then one row per prime power up to `--q-max`, then any rows of `--extra-q`,
 then a generic `q` row.  Wherever prime powers are skipped the axis carries an
-ellipsis.
+ellipsis.  A row is labelled as the prime power it is — the `q = 9` row reads
+`3²`, with its decimal value underneath so it matches the cells.
 
 * **`q = 1` is the alternating groups.**  Over "the field with one element" a
   group of Lie type degenerates to its Weyl group — for type `A_n` that is the
