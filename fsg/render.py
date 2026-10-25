@@ -108,29 +108,31 @@ def tint(hex_color: str, t: float) -> Color:
 class PosterConfig:
     """Everything the poster is parametrised by."""
 
-    #: how many explicit ranks of each rank-parametrised family to show
-    ranks_shown: int = 3
+    #: largest rank with its own block of explicit columns.  The default, 8,
+    #: is the last rank at which a new family appears (E_8); past it every
+    #: block repeats the same six classical families.
+    rank_max: int = 8
     #: largest field size q shown explicitly (rows are the prime powers <= this)
     q_max: int = 13
-    #: alternating groups Alt(5) .. Alt(alt_max) are shown explicitly
-    alt_max: int = 9
+    #: include the q = 1 row, where A_n(1) = Alt(n+1)
+    include_f1: bool = True
     #: columns of the sporadic block (26 puts them all in one strip)
     sporadic_cols: int = 26
 
-    cell_w: float = 104.0
-    cell_h: float = 96.0
+    cell_w: float = 100.0
+    cell_h: float = 100.0
     dots_frac: float = 0.42          # width/height of an ellipsis row or column
     gap: float = 3.0                 # gap between neighbouring cells
 
     margin: float = 46.0
     axis_w: float = 52.0
     header_h: float = 26.0           # per-column header band
-    family_band_h: float = 30.0      # family-title band
+    block_band_h: float = 30.0       # the band naming each rank block
     title_h: float = 212.0
     bottom_gap: float = 40.0
 
     show_atlas_names: bool = True
-    max_order_lines: int = 5
+    max_order_lines: int = 6
     symbol_size: float = 20.0
     atlas_size: float = 7.2
     order_size: float = 6.6
@@ -138,7 +140,7 @@ class PosterConfig:
 
     title: str = "A Periodic Table of the Finite Simple Groups"
     subtitle: str = ("Every finite simple group appears exactly once, in its simplest form.  "
-                     "Columns are families; the vertical axis is the field size q.")
+                     "Columns are grouped by rank; the vertical axis is the field size q.")
 
 
 # --------------------------------------------------------------------------
@@ -152,8 +154,8 @@ class Column:
     family: G.Family | None = None
     rank: int | None = None        # None => generic rank
     header: str = ""
-    family_title: str = ""         # non-empty on the first column of a family
-    family_span: int = 1
+    block_title: str = ""          # non-empty on the first column of a block
+    block_span: int = 1
 
 
 @dataclass
@@ -164,32 +166,42 @@ class Row:
 
 
 def build_columns(cfg: PosterConfig) -> list[Column]:
-    cols: list[Column] = [Column("cells", cfg.cell_w, None, None, header="ℤ/pℤ",
-                                 family_title="Cyclic", family_span=1)]
-    for fam in G.LIE_FAMILIES:
+    """The cyclic column, then one block per rank, then the generic rank.
+
+    Inside a block the families come in the order  A, B, C, D, 2A, 2D  and
+    then the exceptional families of that rank, so the poster reads
+    A_1 | A_2, B_2, 2A_2, G_2, 2B_2, 2G_2 | A_3, B_3, C_3, 2A_3 | ...
+    """
+    cols = [Column("cells", cfg.cell_w, None, None, header="\u2124/p\u2124",
+                   block_title="prime order", block_span=1)]
+
+    def block(title: str, entries) -> None:
         start = len(cols)
-        if fam.ranked:
-            for n in range(fam.min_rank, fam.min_rank + cfg.ranks_shown):
-                cols.append(Column("cells", cfg.cell_w, fam, n,
-                                   header=fam.symbol(str(n))))
-            cols.append(Column("dots", cfg.cell_w * cfg.dots_frac))
-            cols.append(Column("cells", cfg.cell_w, fam, None, header=fam.symbol("n")))
-            cols.append(Column("dots", cfg.cell_w * cfg.dots_frac))
-        else:
-            cols.append(Column("cells", cfg.cell_w, fam, 0, header=fam.symbol("")))
-        cols[start].family_title = _family_title(fam)
-        cols[start].family_span = len(cols) - start
+        for fam, rank in entries:
+            header = fam.symbol(str(rank)) if fam.ranked else fam.symbol("")
+            cols.append(Column("cells", cfg.cell_w, fam,
+                               rank if fam.ranked else 0, header=header))
+        if len(cols) > start:
+            cols[start].block_title = title
+            cols[start].block_span = len(cols) - start
+
+    for n in range(1, cfg.rank_max + 1):
+        block(f"rank {n}", G.families_of_rank(n))
+    cols.append(Column("dots", cfg.cell_w * cfg.dots_frac))
+    start = len(cols)
+    for key in G.RANKED_ORDER:
+        fam = G.FAMILY_BY_KEY[key]
+        cols.append(Column("cells", cfg.cell_w, fam, None, header=fam.symbol("n")))
+    cols[start].block_title = "rank n"
+    cols[start].block_span = len(cols) - start
+    cols.append(Column("dots", cfg.cell_w * cfg.dots_frac))
     return cols
-
-
-def _family_title(fam: G.Family) -> str:
-    sym = fam.symbol("n" if fam.ranked else "")
-    return f"{sym}(q)  —  {fam.title}" if fam.title else f"{sym}(q)"
 
 
 def build_rows(cfg: PosterConfig) -> list[Row]:
     from .arith import prime_powers_up_to
-    rows = [Row("cells", cfg.cell_h, q) for q in prime_powers_up_to(cfg.q_max)]
+    qs = ([1] if cfg.include_f1 else []) + prime_powers_up_to(cfg.q_max)
+    rows = [Row("cells", cfg.cell_h, q) for q in qs]
     rows.append(Row("dots", cfg.cell_h * cfg.dots_frac))
     rows.append(Row("cells", cfg.cell_h, None))
     rows.append(Row("dots", cfg.cell_h * cfg.dots_frac))
@@ -307,7 +319,7 @@ class Poster:
         self.grid_h = sum(row.height for row in self.rows)
         self.bottom_h = self._bottom_height()
         self.width = cfg.margin * 2 + cfg.axis_w + self.grid_w
-        self.height = (cfg.margin * 2 + cfg.title_h + cfg.family_band_h + cfg.header_h
+        self.height = (cfg.margin * 2 + cfg.title_h + cfg.block_band_h + cfg.header_h
                        + self.grid_h + cfg.bottom_gap + self.bottom_h)
 
     # -- geometry ---------------------------------------------------------
@@ -316,7 +328,7 @@ class Poster:
 
     def row_y(self, j: int) -> float:
         """Bottom edge of row ``j``."""
-        top = self.height - self.cfg.margin - self.cfg.title_h - self.cfg.family_band_h \
+        top = self.height - self.cfg.margin - self.cfg.title_h - self.cfg.block_band_h \
             - self.cfg.header_h
         return top - sum(r.height for r in self.rows[:j + 1])
 
@@ -374,6 +386,7 @@ class Poster:
         # ---- lower row of the masthead
         hy = top - 118                       # baseline of the small headings
         dw, dh = cfg.cell_w + 6, 66.0
+        cell_top = hy - 12
         x = x0
 
         def heading(xx, text):
@@ -381,26 +394,24 @@ class Poster:
             c.setFont(UI + "-Bold", 10.5)
             c.drawString(xx, hy, text)
 
-        def lines(xx, yy, texts, size=9.0, leading=11.0, color=INK_SOFT):
-            c.setFillColor(color)
+        def lines(xx, yy, texts, size=9.0, leading=11.0):
+            c.setFillColor(INK_SOFT)
             c.setFont(UI, size)
             for i, t in enumerate(texts):
                 c.drawString(xx, yy - i * leading, t)
 
         # how to read a cell
         heading(x, "HOW TO READ A CELL")
-        cell_top = hy - 12
         demo = G.lie_cell(G.FAMILY_BY_KEY["A"], 1, 7, cfg.show_atlas_names)
         draw_cell(c, demo, x, cell_top - dh, dw, dh, cfg)
-        callouts = [(cell_top - 8, "classical name"),
-                    (cell_top - dh * 0.46, "name as a group of Lie type"),
-                    (cell_top - dh + 11, "prime factorisation of the order")]
-        c.setFont(UI, 9)
-        for yy, text in callouts:
+        for yy, text in [(cell_top - 8, "classical name"),
+                         (cell_top - dh * 0.46, "name as a group of Lie type"),
+                         (cell_top - dh + 11, "prime factorisation of the order")]:
             c.setStrokeColor(INK_FAINT)
             c.setLineWidth(0.5)
             c.line(x + dw + 3, yy, x + dw + 14, yy)
             c.setFillColor(INK_SOFT)
+            c.setFont(UI, 9)
             c.drawString(x + dw + 18, yy - 3, text)
         x += dw + 215
 
@@ -413,37 +424,44 @@ class Poster:
                "shown elsewhere; it is printed only under its",
                "simplest name.  An empty cell means the group",
                "is not defined there, or is not simple."])
-        x += dw + 260
+        x += dw + 258
 
-        # notes, in two columns
-        heading(x, "NOTES")
-        col_w = 470.0
-        for k in range(0, len(self.NOTES), 3):
+        # ---- the families, four to a column
+        heading(x, "FAMILIES")
+        entries = []
+        for key in G.FAMILY_ORDER:
+            fam = G.FAMILY_BY_KEY[key]
+            sym = fam.symbol("n") if fam.ranked else fam.symbol("")
+            name = fam.atlas("n") if fam.ranked else ""
+            label = f"{sym}(q)"
+            if name and name != sym:
+                label += f" = {name}(q)"
+            entries.append(f"{label}  \u2014  {fam.title}")
+        col_w, per_col = 268.0, 4
+        for k in range(0, len(entries), per_col):
             yy = cell_top - 4
-            for note in self.NOTES[k:k + 3]:
-                p, _, ph = fitted(note, MATH, INK_SOFT, col_w, 60, 9.0, 7.5, align=TA_LEFT)
+            for e in entries[k:k + per_col]:
+                p, _, ph = fitted(e, MATH, INK_SOFT, col_w, 26, 9.0, 6.0, align=TA_LEFT)
                 draw_para(c, p, x, yy, col_w, ph)
-                yy -= ph + 4
-            x += col_w + 28
+                yy -= ph + 3
+            x += col_w + 16
 
     # ...................................................................
     def _draw_headers(self, c) -> None:
         cfg = self.cfg
         band_top = self.height - cfg.margin - cfg.title_h
-        fam_y = band_top - cfg.family_band_h
-        hdr_y = fam_y - cfg.header_h
+        band_y = band_top - cfg.block_band_h
+        hdr_y = band_y - cfg.header_h
 
         for i, col in enumerate(self.cols):
-            if col.family_title:
+            if col.block_title:
                 x = self.col_x(i)
-                w = sum(cc.width for cc in self.cols[i:i + col.family_span])
-                cat = col.family.category if col.family else G.CYCLIC
-                hue = HUES[cat]
-                rounded(c, x + 1, fam_y + 3, w - 2, cfg.family_band_h - 6, 3,
-                        tint(hue, 0.30), None)
-                p, _, ph = fitted(col.family_title, MATH, INK, w - 8,
-                                  cfg.family_band_h - 8, 12.5, 6.0)
-                draw_para(c, p, x + 4, fam_y + 3 + (cfg.family_band_h - 6 + ph) / 2,
+                w = sum(cc.width for cc in self.cols[i:i + col.block_span])
+                rounded(c, x + 1, band_y + 3, w - 2, cfg.block_band_h - 6, 3,
+                        HexColor("#eceae4"), None)
+                p, _, ph = fitted(col.block_title, UI + "-Bold", INK, w - 8,
+                                  cfg.block_band_h - 8, 12.5, 6.0)
+                draw_para(c, p, x + 4, band_y + 3 + (cfg.block_band_h - 6 + ph) / 2,
                           w - 8, ph)
             if col.kind == "cells":
                 x = self.col_x(i)
@@ -453,6 +471,7 @@ class Poster:
 
     # ...................................................................
     def _draw_axis(self, c) -> None:
+        from .arith import prime_power
         cfg = self.cfg
         x = cfg.margin
         for j, row in enumerate(self.rows):
@@ -464,20 +483,20 @@ class Poster:
             p, _, ph = fitted(label, MATH + "-Bold", INK, cfg.axis_w - 8, row.height,
                               17.0, 9.0)
             draw_para(c, p, x + 4, y + (row.height + ph) / 2, cfg.axis_w - 8, ph)
-            if row.q is not None:
-                from .arith import prime_power
-                pp = prime_power(row.q)
-                sub = f"{pp[0]}{G.sup(pp[1])}" if pp[1] > 1 else "prime"
-                p2, _, ph2 = fitted(sub, MATH, INK_FAINT, cfg.axis_w - 8, 12, 7.0, 5.0)
-                draw_para(c, p2, x + 4, y + (row.height - ph) / 2 - 1, cfg.axis_w - 8, ph2)
+            if row.q is None:
+                continue
+            if row.q == 1:
+                note = "\u201cF\u2081\u201d"
+            else:
+                pr, e = prime_power(row.q)
+                note = f"{pr}{G.sup(e)}" if e > 1 else "prime"
+            p2, _, ph2 = fitted(note, MATH, INK_FAINT, cfg.axis_w - 6, 12, 7.0, 5.0)
+            draw_para(c, p2, x + 3, y + (row.height - ph) / 2 - 1, cfg.axis_w - 6, ph2)
 
-        # axis title
-        c.saveState()
-        c.translate(cfg.margin + 12, self.row_y(len(self.rows) - 1) - 4)
         c.setFillColor(INK_SOFT)
         c.setFont(UI + "-Bold", 11)
-        c.drawString(0, -12, "q  =  size of the field")
-        c.restoreState()
+        c.drawString(cfg.margin + 12, self.row_y(len(self.rows) - 1) - 16,
+                     "q  =  size of the field")
 
     # ...................................................................
     def _draw_grid(self, c) -> None:
@@ -501,8 +520,13 @@ class Poster:
 
     # ...................................................................
     NOTES = [
-        "\u2022  Each column of a family of Lie type is one rank n;  the column after the "
-        "ellipsis is the generic rank, and the row after the ellipsis is the generic q.",
+        "\u2022  After the cyclic column the columns are grouped by rank:  every family "
+        "with a simple group of rank 1, then of rank 2, and so on.",
+        "\u2022  E<sub>8</sub> is the last family to appear, so from rank 9 onwards every "
+        "block is the same six classical families \u2014 hence the ellipsis.",
+        "\u2022  Row q = 1:  over \u201cthe field with one element\u201d a group of Lie type "
+        "degenerates to its Weyl group, and A<sub>n</sub>(1) = Alt(n+1).  Only type A gives "
+        "a simple group there, so that row is exactly the alternating groups.",
         "\u2022  A cell carrying a parameter shows the generic order formula in place of a "
         "prime factorisation.",
         "\u2022  C<sub>n</sub>(q) \u2245 B<sub>n</sub>(q) for q even, so only the odd-q cells "
@@ -512,8 +536,8 @@ class Poster:
         "3<super>2m+1</super> (m \u2265 1);  their other rows are empty.",
         "\u2022  <super>2</super>F<sub>4</sub>(2) is not simple, but its derived subgroup \u2014 "
         "the Tits group \u2014 is, and is printed in that cell.",
-        "\u2022  Alternating and sporadic groups belong to no family of Lie type;  they are "
-        "shown in their own strips below.",
+        "\u2022  The 26 sporadic groups belong to no family of Lie type;  they are shown in "
+        "their own strip.",
     ]
 
     def _draw_bottom(self, c) -> None:
@@ -527,39 +551,37 @@ class Poster:
             c.setFont(UI + "-Bold", 13)
             c.drawString(xx, top - 14, text)
 
-        # ---- alternating strip
-        heading(x, "Alternating groups")
-        for n in range(5, cfg.alt_max + 1):
-            draw_cell(c, G.alternating_cell(n, cfg.show_atlas_names), x, y,
-                      cfg.cell_w - cfg.gap, cfg.cell_h - cfg.gap, cfg)
-            x += cfg.cell_w
-        dw = cfg.cell_w * cfg.dots_frac
-        draw_dots(c, x, y, dw, cfg.cell_h, vertical=False)
-        x += dw
-        draw_cell(c, G.alternating_cell(None, cfg.show_atlas_names), x, y,
-                  cfg.cell_w - cfg.gap, cfg.cell_h - cfg.gap, cfg)
-        x += cfg.cell_w
-        draw_dots(c, x, y, dw, cfg.cell_h, vertical=False)
-        x += dw + 30
-
         # ---- sporadic strip
         heading(x, "Sporadic groups")
         for k, cell in enumerate(G.sporadic_cells(cfg.show_atlas_names)):
             r, cc = divmod(k, cfg.sporadic_cols)
             draw_cell(c, cell, x + cc * cfg.cell_w, top - 24 - (r + 1) * cfg.cell_h,
                       cfg.cell_w - cfg.gap, cfg.cell_h - cfg.gap, cfg)
-        x += min(cfg.sporadic_cols, len(G.SPORADIC_GROUPS)) * cfg.cell_w + 30
+        x += min(cfg.sporadic_cols, len(G.SPORADIC_GROUPS)) * cfg.cell_w + 32
 
         # ---- the theorem that makes the poster finite
-        right = cfg.margin + cfg.axis_w + self.grid_w
-        box_w = max(240.0, right - x)
+        box_w = 980.0
         rounded(c, x, y, box_w, cfg.cell_h, 5, HexColor("#f4f3ef"), HexColor("#d9d7cf"), 0.8)
         c.setFillColor(INK)
         c.setFont(UI + "-Bold", 11)
-        c.drawString(x + 12, y + cfg.cell_h - 20, "CLASSIFICATION THEOREM")
+        c.drawString(x + 14, y + cfg.cell_h - 21, "CLASSIFICATION THEOREM")
         body = ("Every finite simple group is cyclic of prime order, alternating of degree "
                 "n \u2265 5, a group of Lie type, or one of the 26 sporadic groups.  "
                 "This poster shows every one of them, each exactly once.")
-        p, _, ph = fitted(body, MATH, INK_SOFT, box_w - 24, cfg.cell_h - 34, 10.5, 7.0,
+        p, _, ph = fitted(body, MATH, INK_SOFT, box_w - 28, cfg.cell_h - 36, 11.0, 7.0,
                           align=TA_LEFT)
-        draw_para(c, p, x + 12, y + cfg.cell_h - 28, box_w - 24, ph)
+        draw_para(c, p, x + 14, y + cfg.cell_h - 30, box_w - 28, ph)
+        x += box_w + 32
+
+        # ---- notes, in two columns
+        c.setFillColor(INK)
+        c.setFont(UI + "-Bold", 11)
+        c.drawString(x, top - 14, "NOTES")
+        col_w, per_col = 560.0, 4
+        for k in range(0, len(self.NOTES), per_col):
+            yy = top - 22
+            for note in self.NOTES[k:k + per_col]:
+                p, _, ph = fitted(note, MATH, INK_SOFT, col_w, 60, 8.6, 6.5, align=TA_LEFT)
+                draw_para(c, p, x, yy, col_w, ph)
+                yy -= ph + 4
+            x += col_w + 26

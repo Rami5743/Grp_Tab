@@ -105,6 +105,9 @@ class Family:
     not_simple: Callable[[int, int], bool] = lambda n, q: False
     # numeric value of the exponent N in q**N
     q_exp_value: Callable[[int], int] = lambda n: 0
+    # rank of the Dynkin diagram;  the fixed-rank families use it to find the
+    # rank block they belong to
+    lie_rank: int = 0
 
 
 def _gcd_markup(a: str, b: str) -> str:
@@ -252,10 +255,12 @@ def _fixed(key, category, symbol, atlas, N, terms, divisor=lambda q: 1,
     )
 
 
-def _odd_power_of(p):
+def _odd_power_of(p, min_exponent=1):
+    """q = p**(2m+1).  ``min_exponent`` cuts off the degenerate m = 0 case."""
     def ok(q):
         pp = arith.prime_power(q)
-        return pp is not None and pp[0] == p and pp[1] % 2 == 1
+        return (pp is not None and pp[0] == p and pp[1] % 2 == 1
+                and pp[1] >= min_exponent)
     return ok
 
 
@@ -283,7 +288,7 @@ EXCEPTIONAL_FAMILIES = [
            divisor=lambda q: gcd(3, q + 1),
            divisor_markup=lambda q: _gcd_markup("3", f"{q}+1"), title="Twisted E₆"),
     _fixed("2B2", EXCEPTIONAL_TWISTED, f"{sup(2)}B{sub(2)}", "Sz", 2,
-           [(2, +1, 1), (1, -1, 1)], q_allowed=_odd_power_of(2), title="Suzuki"),
+           [(2, +1, 1), (1, -1, 1)], q_allowed=_odd_power_of(2, 3), title="Suzuki"),
     _fixed("2G2", EXCEPTIONAL_TWISTED, f"{sup(2)}G{sub(2)}", "R", 3,
            [(3, +1, 1), (1, -1, 1)], q_allowed=_odd_power_of(3), title="Ree (small)",
            not_simple=lambda q: q == 3),
@@ -292,8 +297,44 @@ EXCEPTIONAL_FAMILIES = [
            title="Ree (large)", not_simple=lambda q: q == 2),
 ]
 
+#: rank of the Dynkin diagram of each exceptional family
+EXCEPTIONAL_RANKS = {"G2": 2, "F4": 4, "E6": 6, "E7": 7, "E8": 8,
+                     "3D4": 4, "2E6": 6, "2B2": 2, "2G2": 2, "2F4": 4}
+for _fam in EXCEPTIONAL_FAMILIES:
+    _fam.lie_rank = EXCEPTIONAL_RANKS[_fam.key]
+
 LIE_FAMILIES = RANKED_FAMILIES + EXCEPTIONAL_FAMILIES
 FAMILY_BY_KEY = {f.key: f for f in LIE_FAMILIES}
+
+#: order of the families inside one rank block: untwisted classical, twisted
+#: classical, untwisted exceptional, twisted exceptional
+FAMILY_ORDER = ["A", "B", "C", "D", "2A", "2D",
+                "G2", "F4", "E6", "E7", "E8", "3D4", "2E6", "2B2", "2G2", "2F4"]
+
+RANKED_ORDER = [k for k in FAMILY_ORDER if FAMILY_BY_KEY[k].ranked]
+
+#: the largest rank at which a family appears for the first time.  Past it
+#: every rank block is the same six classical families -- the point at which
+#: the table stops saying anything new.
+LAST_INTERESTING_RANK = max(EXCEPTIONAL_RANKS.values())
+
+
+def families_of_rank(n: int) -> list[tuple["Family", int]]:
+    """The families with a simple group of rank ``n``, in display order.
+
+    Each family starts at the rank below which it would duplicate another
+    one:  B_1 = A_1,  C_2 = B_2,  D_3 = A_3  and  2D_3 = 2A_3  are not
+    repeated, so B starts at 2, C at 3, D and 2D at 4.
+    """
+    out: list[tuple[Family, int]] = []
+    for key in FAMILY_ORDER:
+        fam = FAMILY_BY_KEY[key]
+        if fam.ranked:
+            if n >= fam.min_rank:
+                out.append((fam, n))
+        elif fam.lie_rank == n:
+            out.append((fam, 0))
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -383,8 +424,33 @@ def duplicate_of(fam_key: str, n: int, q: int) -> str | None:
 # cell construction
 # --------------------------------------------------------------------------
 
+def f1_cell(n, show_atlas: bool = True) -> Cell | None:
+    """The cell of ``A_n(1)``.
+
+    Over "the field with one element" a group of Lie type degenerates to its
+    Weyl group, and  A_n(1) = Alt(n+1).  Of all the Weyl groups only those of
+    type A give a simple group, so this is the whole q = 1 row -- and it is
+    where the alternating groups live.
+    """
+    if n is None:
+        return Cell(symbol=f"A{sub('n')}(1)", atlas="Alt(n+1)" if show_atlas else "",
+                    order="(n+1)! / 2", category=ALTERNATING, generic=True)
+    m = n + 1                                  # A_n(1) = Alt(m)
+    if m == 3:                                 # Alt(3) is cyclic of order 3
+        return Cell(symbol=f"A{sub(n)}(1)", category=ALTERNATING,
+                    ghost=f"{CONG} \u2124/3\u2124")
+    if m < 5:                                  # Alt(2) is trivial, Alt(4) solvable
+        return None
+    fac = arith.factor_factorial(m)
+    arith.merge(fac, {2: 1}, sign=-1)
+    return Cell(symbol=f"A{sub(n)}(1)", atlas=f"Alt({m})" if show_atlas else "",
+                order=factorisation_markup(fac), category=ALTERNATING)
+
+
 def lie_cell(fam: Family, n, q, show_atlas: bool = True) -> Cell | None:
     """Build the cell for ``fam`` at rank ``n`` / field ``q`` (``None`` = generic)."""
+    if q == 1:
+        return f1_cell(n, show_atlas) if fam.key == "A" else None
     concrete = n is not None and q is not None
     n_str = "n" if n is None else str(n)
     q_str = "q" if q is None else str(q)

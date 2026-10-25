@@ -23,12 +23,12 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="path of the PDF to write")
 
     g = p.add_argument_group("content")
-    g.add_argument("--ranks-shown", type=int, default=cfg.ranks_shown,
-                   help="explicit ranks per family of Lie type, before the ellipsis")
+    g.add_argument("--rank-max", type=int, default=cfg.rank_max,
+                   help="largest rank with its own block of columns, before the ellipsis")
     g.add_argument("--q-max", type=int, default=cfg.q_max,
                    help="largest field size q with an explicit row")
-    g.add_argument("--alt-max", type=int, default=cfg.alt_max,
-                   help="largest alternating group Alt(n) with an explicit cell")
+    g.add_argument("--no-f1-row", action="store_true",
+                   help="drop the q = 1 row, where A_n(1) = Alt(n+1)")
     g.add_argument("--sporadic-cols", type=int, default=cfg.sporadic_cols,
                    help="columns of the sporadic block")
     g.add_argument("--no-atlas-names", action="store_true",
@@ -52,7 +52,7 @@ def parse_args(argv=None) -> argparse.Namespace:
 
 def config_from_args(a: argparse.Namespace) -> PosterConfig:
     return PosterConfig(
-        ranks_shown=a.ranks_shown, q_max=a.q_max, alt_max=a.alt_max,
+        rank_max=a.rank_max, q_max=a.q_max, include_f1=not a.no_f1_row,
         sporadic_cols=a.sporadic_cols, show_atlas_names=not a.no_atlas_names,
         cell_w=a.cell_w, cell_h=a.cell_h, dots_frac=a.dots_frac, margin=a.margin,
         symbol_size=a.symbol_size, order_size=a.order_size,

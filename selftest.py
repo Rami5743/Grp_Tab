@@ -84,6 +84,7 @@ def test_alternating_orders() -> None:
 
 def drawn_cells(cfg: PosterConfig):
     """Every concrete (non-ghost) group the poster prints, with its order."""
+    import math
     poster = Poster(cfg)
     out = []
     for col in poster.cols:
@@ -102,14 +103,15 @@ def drawn_cells(cfg: PosterConfig):
             cell = G.lie_cell(col.family, col.rank, row.q)
             if cell is None or cell.ghost:
                 continue
+            if row.q == 1:                      # A_n(1) = Alt(n+1)
+                out.append((f"A_{col.rank}(1)",
+                            math.factorial(col.rank + 1) // 2, cell))
+                continue
             if (col.family.key, col.rank, row.q) == G.TITS:
                 out.append(("2F4(2)'", 17971200, cell))
                 continue
             out.append((f"{col.family.key}_{col.rank}({row.q})",
                         G.lie_order_value(col.family, col.rank, row.q), cell))
-    import math
-    for n in range(5, cfg.alt_max + 1):
-        out.append((f"Alt({n})", math.factorial(n) // 2, G.alternating_cell(n)))
     for sym, _, order in G.SPORADIC_GROUPS:
         out.append((sym, order, None))
     return out
@@ -128,7 +130,7 @@ def test_no_repetitions() -> None:
 
     def allowed(names: list[str]) -> bool:
         s = set(names)
-        if s == {"Alt(8)", "A_2(4)"}:          # the classical order-20160 pair
+        if s == {"A_7(1)", "A_2(4)"}:          # Alt(8) and L_3(4), both of order 20160
             return True
         # B_n(q) and C_n(q), q odd, n >= 3: equal orders, non-isomorphic
         if len(s) == 2 and all(n.startswith(("B_", "C_")) for n in s):
