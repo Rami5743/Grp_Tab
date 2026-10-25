@@ -88,8 +88,6 @@ INK = HexColor("#121212")
 INK_SOFT = HexColor("#55534e")
 INK_FAINT = HexColor("#8a8780")
 PAPER = HexColor("#fcfcfb")
-GHOST_FILL = HexColor("#f0efec")
-GHOST_INK = HexColor("#857f74")
 
 
 def tint(hex_color: str, t: float) -> Color:
@@ -111,11 +109,15 @@ class PosterConfig:
     #: largest rank with its own block of explicit columns.  The default, 8,
     #: is the last rank at which a new family appears (E_8); past it every
     #: block repeats the same six classical families.
-    rank_max: int = 8
+    rank_max: int = 10
     #: largest field size q shown explicitly (rows are the prime powers <= this)
     q_max: int = 13
     #: include the q = 1 row, where A_n(1) = Alt(n+1)
     include_f1: bool = True
+    #: further rows past ``q_max``, chosen so that the Suzuki and Ree columns
+    #: -- which only exist for q = 2^(2m+1) and 3^(2m+1) -- carry at least
+    #: two groups each
+    extra_q: tuple = (27, 32, 243)
     #: columns of the sporadic block (26 puts them all in one strip)
     sporadic_cols: int = 26
 
@@ -128,15 +130,15 @@ class PosterConfig:
     axis_w: float = 52.0
     header_h: float = 26.0           # per-column header band
     block_band_h: float = 30.0       # the band naming each rank block
-    title_h: float = 212.0
+    title_h: float = 224.0
     bottom_gap: float = 40.0
 
-    show_atlas_names: bool = True
-    max_order_lines: int = 6
+    show_alt_names: bool = True
+    max_order_lines: int = 7
     symbol_size: float = 20.0
-    atlas_size: float = 7.2
-    order_size: float = 6.6
-    min_order_size: float = 4.2
+    alt_size: float = 7.4
+    order_size: float = 8.2
+    min_order_size: float = 5.0
 
     title: str = "A Periodic Table of the Finite Simple Groups"
     subtitle: str = ("Every finite simple group appears exactly once, in its simplest form.  "
@@ -172,8 +174,8 @@ def build_columns(cfg: PosterConfig) -> list[Column]:
     then the exceptional families of that rank, so the poster reads
     A_1 | A_2, B_2, 2A_2, G_2, 2B_2, 2G_2 | A_3, B_3, C_3, 2A_3 | ...
     """
-    cols = [Column("cells", cfg.cell_w, None, None, header="\u2124/p\u2124",
-                   block_title="prime order", block_span=1)]
+    cols = [Column("cells", cfg.cell_w, None, None, header=f"C{G.sub('p')}",
+                   block_title="cyclic", block_span=1)]
 
     def block(title: str, entries) -> None:
         start = len(cols)
@@ -199,12 +201,24 @@ def build_columns(cfg: PosterConfig) -> list[Column]:
 
 
 def build_rows(cfg: PosterConfig) -> list[Row]:
+    """One row per displayed q, with an ellipsis wherever prime powers are skipped."""
     from .arith import prime_powers_up_to
-    qs = ([1] if cfg.include_f1 else []) + prime_powers_up_to(cfg.q_max)
-    rows = [Row("cells", cfg.cell_h, q) for q in qs]
-    rows.append(Row("dots", cfg.cell_h * cfg.dots_frac))
+    qs = sorted(set(prime_powers_up_to(cfg.q_max)) | set(cfg.extra_q))
+    every = prime_powers_up_to(max(qs)) if qs else []
+    dots = Row("dots", cfg.cell_h * cfg.dots_frac)
+
+    rows: list[Row] = []
+    if cfg.include_f1:
+        rows.append(Row("cells", cfg.cell_h, 1))
+    prev = None
+    for q in qs:
+        if prev is not None and every.index(q) != every.index(prev) + 1:
+            rows.append(Row("dots", dots.height))
+        rows.append(Row("cells", cfg.cell_h, q))
+        prev = q
+    rows.append(Row("dots", dots.height))
     rows.append(Row("cells", cfg.cell_h, None))
-    rows.append(Row("dots", cfg.cell_h * cfg.dots_frac))
+    rows.append(Row("dots", dots.height))
     return rows
 
 
@@ -230,6 +244,11 @@ def fitted(text: str, font: str, color, max_w: float, max_h: float,
         size -= 0.3
 
 
+def fits_at(text: str, font: str, max_w: float, max_h: float, size: float) -> bool:
+    p = Paragraph(text, _style(font, size, INK_SOFT))
+    return p.wrap(max_w, 10_000)[1] <= max_h
+
+
 def draw_para(c, p: Paragraph, x: float, y_top: float, w: float, h: float) -> None:
     p.drawOn(c, x, y_top - h)
 
@@ -252,52 +271,54 @@ def rounded(c, x, y, w, h, r, fill, stroke=None, lw=0.6, dash=None):
 
 def draw_cell(c, cell: G.Cell, x: float, y: float, w: float, h: float,
               cfg: PosterConfig) -> None:
+    """One box: alternative descriptions flush left at the top, the group's
+    symbol just below them, and the order filling everything underneath."""
     hue = HUES[cell.category]
     pad = 4.5
-    r = 4.0
-
-    if cell.ghost:
-        rounded(c, x, y, w, h, r, GHOST_FILL, HexColor("#dddbd4"), 0.6, dash=(1.6, 1.8))
-        p, _, ph = fitted(cell.ghost, MATH, GHOST_INK, w - 2 * pad, h - 2 * pad, 10.5, 5.5)
-        draw_para(c, p, x + pad, y + (h + ph) / 2, w - 2 * pad, ph)
-        return
-
-    rounded(c, x, y, w, h, r, tint(hue, 0.15), tint(hue, 0.62), 0.7)
+    inner = w - 2 * pad
+    rounded(c, x, y, w, h, 4.0, tint(hue, 0.15), tint(hue, 0.62), 0.7)
 
     # accent bar across the top: the category signal, repeated by the legend
     c.saveState()
     c.setFillColor(HexColor(hue))
-    c.roundRect(x, y + h - 6.0, w, 6.0, r, stroke=0, fill=1)
+    c.roundRect(x, y + h - 6.0, w, 6.0, 4.0, stroke=0, fill=1)
     c.rect(x, y + h - 6.0, w, 3.0, stroke=0, fill=1)
     c.restoreState()
 
-    top = y + h - 6.0 - 2.0
+    # one line is always reserved for the top line, so that the symbols of a
+    # row sit at the same height whether or not a cell has one
+    band = cfg.alt_size * 1.25
+    top = y + h - 6.0 - 1.5
+    if cell.alt:
+        p, _, ph = fitted(cell.alt, MATH, INK_SOFT, inner, band, cfg.alt_size, 4.2,
+                          align=TA_LEFT)
+        draw_para(c, p, x + pad, top, inner, ph)
+    top -= band + 1.0
 
-    if cell.atlas:
-        p, _, ph = fitted(cell.atlas, MATH, INK_SOFT, w - 2 * pad, 13, cfg.atlas_size, 5.0)
-        draw_para(c, p, x + pad, top, w - 2 * pad, ph)
-        top -= ph + 1.0
+    p_sym, _, sh = fitted(cell.symbol, MATH, INK, inner, cfg.symbol_size * 1.75,
+                          cfg.symbol_size, 7.0)
+    draw_para(c, p_sym, x + pad, top, inner, sh)
+    top -= sh + 3.0
 
-    order_h = 0.0
     if cell.order:
-        max_h = cfg.order_size * 1.16 * cfg.max_order_lines
-        p_ord, _, order_h = fitted(cell.order, MATH, INK_SOFT, w - 2 * pad, max_h,
-                                   cfg.order_size, cfg.min_order_size)
-        draw_para(c, p_ord, x + pad, y + pad + order_h, w - 2 * pad, order_h)
-        # hairline separating the symbol from its order
+        avail = top - (y + pad) - 3.0
+        max_h = min(avail, cfg.order_size * 1.16 * cfg.max_order_lines)
+        text = cell.order
+        # a factorisation that will not fit even at the smallest size gives
+        # way to the order formula with q substituted in
+        if cell.order_alt and not fits_at(text, MATH, inner, max_h, cfg.min_order_size):
+            text = cell.order_alt
+        p_ord, _, oh = fitted(text, MATH, INK_SOFT, inner, max_h,
+                              cfg.order_size, cfg.min_order_size)
+        draw_para(c, p_ord, x + pad, y + pad + oh, inner, oh)
         c.setStrokeColor(tint(hue, 0.45))
         c.setLineWidth(0.4)
-        c.line(x + pad * 2, y + pad + order_h + 3.0, x + w - pad * 2, y + pad + order_h + 3.0)
-
-    mid_top, mid_bot = top, y + pad + order_h + 5.0
-    p_sym, _, sh = fitted(cell.symbol, MATH, INK, w - 2 * pad, mid_top - mid_bot,
-                          cfg.symbol_size, 7.0)
-    draw_para(c, p_sym, x + pad, (mid_top + mid_bot) / 2 + sh / 2, w - 2 * pad, sh)
+        c.line(x + pad * 2, y + pad + oh + 3.0, x + w - pad * 2, y + pad + oh + 3.0)
 
     if cell.note:
         c.setFont(UI, 4.8)
         c.setFillColor(INK_FAINT)
-        c.drawRightString(x + w - pad, y + h - 14.0, cell.note)
+        c.drawRightString(x + w - pad, y + h - 13.0, cell.note)
 
 
 def draw_dots(c, x, y, w, h, vertical: bool) -> None:
@@ -402,11 +423,11 @@ class Poster:
 
         # how to read a cell
         heading(x, "HOW TO READ A CELL")
-        demo = G.lie_cell(G.FAMILY_BY_KEY["A"], 1, 7, cfg.show_atlas_names)
+        demo = G.lie_cell(G.FAMILY_BY_KEY["A"], 1, 7, cfg.show_alt_names)
         draw_cell(c, demo, x, cell_top - dh, dw, dh, cfg)
-        for yy, text in [(cell_top - 8, "classical name"),
-                         (cell_top - dh * 0.46, "name as a group of Lie type"),
-                         (cell_top - dh + 11, "prime factorisation of the order")]:
+        for yy, text in [(cell_top - 8, "other descriptions of the same group"),
+                         (cell_top - dh * 0.5, "the group"),
+                         (cell_top - dh + 11, "prime factorisation of its order")]:
             c.setStrokeColor(INK_FAINT)
             c.setLineWidth(0.5)
             c.line(x + dw + 3, yy, x + dw + 14, yy)
@@ -415,16 +436,23 @@ class Poster:
             c.drawString(x + dw + 18, yy - 3, text)
         x += dw + 215
 
-        # the no-repetition rule
-        heading(x, "NO REPETITIONS")
-        draw_cell(c, G.Cell(symbol="", category=G.CLASSICAL, ghost=f"{G.CONG} Alt(5)"),
-                  x, cell_top - dh, dw, dh, cfg)
-        lines(x + dw + 14, cell_top - 10,
-              ["a dashed cell marks a group isomorphic to one",
-               "shown elsewhere; it is printed only under its",
-               "simplest name.  An empty cell means the group",
-               "is not defined there, or is not simple."])
-        x += dw + 258
+        # why a cell is empty, and where the missing groups are
+        heading(x, "AN EMPTY CELL")
+        lines(x, cell_top - 8,
+              ["the group is not defined there, or is not simple,",
+               "or it is isomorphic to one printed elsewhere \u2014",
+               "every group appears only under its simplest name:"])
+        key_x = x + 8
+        col_w, per_col = 190.0, 3
+        for k in range(0, len(G.HOLE_KEY), per_col):
+            yy = cell_top - 44
+            for missing, home in G.HOLE_KEY[k:k + per_col]:
+                p, _, ph = fitted(f"{missing}  \u2192  {home}", MATH, INK_SOFT,
+                                  col_w, 20, 8.5, 6.0, align=TA_LEFT)
+                draw_para(c, p, key_x, yy, col_w, ph)
+                yy -= ph + 1.5
+            key_x += col_w + 10
+        x += 4 * (col_w + 10) + 40
 
         # ---- the families, four to a column
         heading(x, "FAMILIES")
@@ -511,8 +539,8 @@ class Poster:
                     elif row.kind == "dots" and col.kind == "cells":
                         draw_dots(c, x, y, col.width, row.height, vertical=True)
                     continue
-                cell = (G.cyclic_cell(row.q, cfg.show_atlas_names) if col.family is None
-                        else G.lie_cell(col.family, col.rank, row.q, cfg.show_atlas_names))
+                cell = (G.cyclic_cell(row.q, cfg.show_alt_names) if col.family is None
+                        else G.lie_cell(col.family, col.rank, row.q, cfg.show_alt_names))
                 if cell is None:
                     continue
                 draw_cell(c, cell, x + cfg.gap / 2, y + cfg.gap / 2,
@@ -525,10 +553,14 @@ class Poster:
         "\u2022  E<sub>8</sub> is the last family to appear, so from rank 9 onwards every "
         "block is the same six classical families \u2014 hence the ellipsis.",
         "\u2022  Row q = 1:  over \u201cthe field with one element\u201d a group of Lie type "
-        "degenerates to its Weyl group, and A<sub>n</sub>(1) = Alt(n+1).  Only type A gives "
-        "a simple group there, so that row is exactly the alternating groups.",
+        "degenerates to its Weyl group, and the cell A<sub>n</sub>(1) holds the alternating "
+        "group A<sub>n+1</sub>.  Only type A is simple there, so that row is exactly the "
+        "alternating groups.",
         "\u2022  A cell carrying a parameter shows the generic order formula in place of a "
-        "prime factorisation.",
+        "prime factorisation, and so does a cell whose factorisation is too long to print.",
+        "\u2022  The rows past q = 13 are selected larger prime powers, chosen so that the "
+        "Suzuki and Ree columns \u2014 which exist only for q = 2<super>2m+1</super> and "
+        "q = 3<super>2m+1</super> \u2014 carry more than one group each.",
         "\u2022  C<sub>n</sub>(q) \u2245 B<sub>n</sub>(q) for q even, so only the odd-q cells "
         "of the C columns are printed.",
         "\u2022  <super>2</super>B<sub>2</sub>(q) and <super>2</super>F<sub>4</sub>(q) exist for "
@@ -538,6 +570,10 @@ class Poster:
         "the Tits group \u2014 is, and is printed in that cell.",
         "\u2022  The 26 sporadic groups belong to no family of Lie type;  they are shown in "
         "their own strip.",
+        "\u2022  A symbol with a subscript and no field is a group over \u201cF<sub>1</sub>\u201d:  "
+        "C<sub>p</sub> is cyclic of order p and A<sub>m</sub> is alternating of degree m.  With a "
+        "field, A<sub>n</sub>(q) is linear and C<sub>n</sub>(q) symplectic \u2014 the argument "
+        "tells them apart.",
     ]
 
     def _draw_bottom(self, c) -> None:
@@ -553,7 +589,7 @@ class Poster:
 
         # ---- sporadic strip
         heading(x, "Sporadic groups")
-        for k, cell in enumerate(G.sporadic_cells(cfg.show_atlas_names)):
+        for k, cell in enumerate(G.sporadic_cells(cfg.show_alt_names)):
             r, cc = divmod(k, cfg.sporadic_cols)
             draw_cell(c, cell, x + cc * cfg.cell_w, top - 24 - (r + 1) * cfg.cell_h,
                       cfg.cell_w - cfg.gap, cfg.cell_h - cfg.gap, cfg)
@@ -577,7 +613,10 @@ class Poster:
         c.setFillColor(INK)
         c.setFont(UI + "-Bold", 11)
         c.drawString(x, top - 14, "NOTES")
-        col_w, per_col = 560.0, 4
+        right = cfg.margin + cfg.axis_w + self.grid_w
+        n_cols = 3
+        per_col = -(-len(self.NOTES) // n_cols)
+        col_w = max(380.0, (right - x - 26.0 * (n_cols - 1)) / n_cols)
         for k in range(0, len(self.NOTES), per_col):
             yy = top - 22
             for note in self.NOTES[k:k + per_col]:

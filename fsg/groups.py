@@ -40,7 +40,12 @@ def power(base, exp) -> str:
 
 
 def factorisation_markup(fac: dict[int, int]) -> str:
-    return CDOT.join(power(p, e) for p, e in sorted(fac.items()))
+    """``p1^e1 . p2^e2 . ...``, with a space after each dot.
+
+    The space is the only place a line may be broken, so a prime power is
+    never split across two lines; the dot stays at the end of the line.
+    """
+    return (CDOT + " ").join(power(p, e) for p, e in sorted(fac.items()))
 
 
 # --------------------------------------------------------------------------
@@ -75,9 +80,10 @@ class Cell:
     """One box of the poster."""
     symbol: str                  # centre line, markup
     order: str = ""              # bottom line, markup
-    atlas: str = ""              # top line, markup (classical / ATLAS name)
+    order_alt: str = ""          # same order as a formula, if the factorisation
+                                 # is too long to print
+    alt: str = ""                # top line: other descriptions of this group
     category: str = CLASSICAL
-    ghost: str = ""              # non-empty => duplicate, text explains where it lives
     generic: bool = False        # a parametrised cell (order is a formula)
     note: str = ""               # small marker, e.g. the prime of a derived subgroup
 
@@ -138,9 +144,9 @@ def _terms_markup(terms: list, q: str) -> str:
     for k, sign, mult in sorted(terms, key=lambda t: -t[0]):
         piece = f"({power(q, k)}{'+' if sign > 0 else MINUS}1)"
         (num if mult > 0 else den).append(piece)
-    out = "".join(num)
+    out = " ".join(num)                     # a factor is never split in two
     if den:
-        out += " / " + "".join(den)
+        out += " / " + " ".join(den)
     return out
 
 
@@ -356,15 +362,11 @@ def lie_order_value(fam: Family, n: int, q: int) -> int:
     return arith.value(lie_order_factorisation(fam, n, q))
 
 
-def lie_order_markup(fam: Family, n, q) -> str:
-    """Order of ``fam`` at rank ``n`` and field size ``q``.
+def lie_order_formula(fam: Family, n, q) -> str:
+    """Order of ``fam`` as a formula, with any concrete value substituted in.
 
-    ``n`` or ``q`` may be ``None``, meaning "generic"; the result is then a
-    formula rather than a prime factorisation.
+    ``n`` or ``q`` may be ``None``, meaning "generic".
     """
-    if n is not None and q is not None:
-        return factorisation_markup(lie_order_factorisation(fam, n, q))
-
     q_str = "q" if q is None else str(q)
     n_str = "n" if n is None else str(n)
     body = power(q_str, fam.q_exponent(n_str))
@@ -378,12 +380,22 @@ def lie_order_markup(fam: Family, n, q) -> str:
     return body
 
 
+def lie_order_markup(fam: Family, n, q) -> str:
+    """Prime factorisation of the order when both parameters are concrete,
+    the order formula otherwise."""
+    if n is not None and q is not None:
+        return factorisation_markup(lie_order_factorisation(fam, n, q))
+    return lie_order_formula(fam, n, q)
+
+
 # --------------------------------------------------------------------------
 # exceptional isomorphisms -- "every group in its simplest form"
 # --------------------------------------------------------------------------
 
 def _alt(n: int) -> str:
-    return f"Alt({n})"
+    """The alternating group on n letters.  Like the cyclic C_p, it carries no
+    field, which is what tells it apart from the linear family A_n(q)."""
+    return f"A{sub(n)}"
 
 
 #: ``(family key, rank, q) -> the cell where that group actually lives``
@@ -411,6 +423,55 @@ NOT_SIMPLE_EMPTY: set = {("A", 1, 2), ("A", 1, 3), ("2A", 2, 2)}
 TITS = ("2F4", 0, 2)
 
 
+#: Every hole the "simplest form" rule leaves in the table, as
+#: (what is not printed there, where that group is printed instead).
+#: A prime marks a derived subgroup: the group in that cell is not simple,
+#: but its derived subgroup is, and it lives elsewhere.
+HOLE_KEY: list[tuple[str, str]] = [
+    (f"A{sub(2)}(1)", f"C{sub(3)}"),
+    (f"A{sub(1)}(4), A{sub(1)}(5)", f"A{sub(5)}   [ A{sub(4)}(1) ]"),
+    (f"A{sub(1)}(9)", f"A{sub(6)}   [ A{sub(5)}(1) ]"),
+    (f"A{sub(2)}(2)", f"A{sub(1)}(7)"),
+    (f"A{sub(3)}(2)", f"A{sub(8)}   [ A{sub(7)}(1) ]"),
+    (f"{sup(2)}A{sub(3)}(2)", f"B{sub(2)}(3)"),
+    (f"C{sub('n')}(q),  q even", f"B{sub('n')}(q)"),
+    (f"B{sub(2)}(2)\u2032", f"A{sub(6)}   [ A{sub(5)}(1) ]"),
+    (f"G{sub(2)}(2)\u2032", f"{sup(2)}A{sub(2)}(3)"),
+    (f"{sup(2)}G{sub(2)}(3)\u2032", f"A{sub(1)}(8)"),
+]
+
+
+#: Other descriptions of a group, printed on the top line of its cell.  Only
+#: genuine coincidences go here -- a second notation for the same construction
+#: (A_n(q) = L_{n+1}(q)) is in the key of families instead.
+ALT_DESCRIPTIONS: dict[tuple, list[str]] = {
+    ("A", 1, 7): [f"A{sub(2)}(2)"],
+    ("A", 1, 8): [f"{sup(2)}G{sub(2)}(3)\u2032"],
+    ("B", 2, 3): [f"{sup(2)}A{sub(3)}(2)"],
+    ("2A", 2, 3): [f"G{sub(2)}(2)\u2032"],
+}
+
+#: the same, for the alternating groups in the q = 1 row, keyed by n in A_n(1)
+F1_ALT_DESCRIPTIONS: dict[int, list[str]] = {
+    4: [f"A{sub(1)}(4)", f"A{sub(1)}(5)"],
+    5: [f"A{sub(1)}(9)", f"B{sub(2)}(2)\u2032"],
+    7: [f"A{sub(3)}(2)"],
+}
+
+
+def _alt_line(parts: list[str], lead: str = "") -> str:
+    """``lead`` followed by each alternative description, each after a congruence."""
+    return lead + "".join(f"{' ' if lead or i else ''}{CONG} {t}"
+                          for i, t in enumerate(parts))
+
+
+def alt_descriptions(fam_key: str, n: int, q: int) -> list[str]:
+    out = list(ALT_DESCRIPTIONS.get((fam_key, n, q), ()))
+    if fam_key == "B" and q % 2 == 0:            # B_n(q) = C_n(q) in characteristic 2
+        out.append(f"C{sub(n)}({q})")
+    return out
+
+
 def duplicate_of(fam_key: str, n: int, q: int) -> str | None:
     """Where this group lives instead, or ``None`` if this is its home."""
     if (fam_key, n, q) in DUPLICATES:
@@ -424,33 +485,32 @@ def duplicate_of(fam_key: str, n: int, q: int) -> str | None:
 # cell construction
 # --------------------------------------------------------------------------
 
-def f1_cell(n, show_atlas: bool = True) -> Cell | None:
+def f1_cell(n, show_alt: bool = True) -> Cell | None:
     """The cell of ``A_n(1)``.
 
     Over "the field with one element" a group of Lie type degenerates to its
-    Weyl group, and  A_n(1) = Alt(n+1).  Of all the Weyl groups only those of
-    type A give a simple group, so this is the whole q = 1 row -- and it is
-    where the alternating groups live.
+    Weyl group, and the cell A_n(1) holds the alternating group A_(n+1).  Of
+    all the Weyl groups only those of type A give a simple group, so this is
+    the whole q = 1 row -- and it is where the alternating groups live.  The
+    group is named A_(n+1);  "A_n(1)" is only its address on the poster.
     """
     if n is None:
-        return Cell(symbol=f"A{sub('n')}(1)", atlas="Alt(n+1)" if show_atlas else "",
-                    order="(n+1)! / 2", category=ALTERNATING, generic=True)
-    m = n + 1                                  # A_n(1) = Alt(m)
-    if m == 3:                                 # Alt(3) is cyclic of order 3
-        return Cell(symbol=f"A{sub(n)}(1)", category=ALTERNATING,
-                    ghost=f"{CONG} \u2124/3\u2124")
-    if m < 5:                                  # Alt(2) is trivial, Alt(4) solvable
+        return Cell(symbol=f"A{sub('n+1')}", order="(n+1)! / 2",
+                    category=ALTERNATING, generic=True)
+    m = n + 1
+    if m < 5:                 # A_2 trivial, A_3 = C_3 cyclic, A_4 solvable
         return None
     fac = arith.factor_factorial(m)
     arith.merge(fac, {2: 1}, sign=-1)
-    return Cell(symbol=f"A{sub(n)}(1)", atlas=f"Alt({m})" if show_atlas else "",
+    alt = _alt_line(F1_ALT_DESCRIPTIONS.get(n, [])) if show_alt else ""
+    return Cell(symbol=_alt(m), alt=alt,
                 order=factorisation_markup(fac), category=ALTERNATING)
 
 
-def lie_cell(fam: Family, n, q, show_atlas: bool = True) -> Cell | None:
+def lie_cell(fam: Family, n, q, show_alt: bool = True) -> Cell | None:
     """Build the cell for ``fam`` at rank ``n`` / field ``q`` (``None`` = generic)."""
     if q == 1:
-        return f1_cell(n, show_atlas) if fam.key == "A" else None
+        return f1_cell(n, show_alt) if fam.key == "A" else None
     concrete = n is not None and q is not None
     n_str = "n" if n is None else str(n)
     q_str = "q" if q is None else str(q)
@@ -461,49 +521,55 @@ def lie_cell(fam: Family, n, q, show_atlas: bool = True) -> Cell | None:
         return None
 
     symbol = f"{fam.symbol(n_str)}({q_str})"
-    atlas = f"{fam.atlas(n_str)}({q_str})" if show_atlas else ""
+    alt = ""
+    if show_alt and n is not None and q is not None:
+        alt = _alt_line(alt_descriptions(fam.key, n if fam.ranked else 0, q))
 
     if concrete:
         rank_key = n if fam.ranked else 0
         if (fam.key, rank_key, q) in NOT_SIMPLE_EMPTY:
             return None
         if (fam.key, rank_key, q) == TITS:
-            return Cell(symbol=f"{sup(2)}F{sub(4)}(2)′", atlas="Tits group",
+            return Cell(symbol=f"{sup(2)}F{sub(4)}(2)′", alt="Tits group",
                         order=factorisation_markup(arith.factor(17971200)),
                         category=EXCEPTIONAL_TWISTED, note="derived subgroup")
-        if (fam.key, rank_key, q) in DERIVED:
-            return Cell(symbol=symbol, category=fam.category,
-                        ghost=f"{symbol}′ {CONG} {DERIVED[(fam.key, rank_key, q)]}")
-        if fam.not_simple(rank_key, q):
+        # a group that is not simple here, or that is isomorphic to one
+        # printed elsewhere, leaves the cell empty: see HOLE_KEY
+        if (fam.key, rank_key, q) in DERIVED or fam.not_simple(rank_key, q):
             return None
-        dup = duplicate_of(fam.key, rank_key, q)
-        if dup is not None:
-            return Cell(symbol=symbol, category=fam.category, ghost=f"{CONG} {dup}")
+        if duplicate_of(fam.key, rank_key, q) is not None:
+            return None
 
-    return Cell(symbol=symbol, atlas=atlas,
+    return Cell(symbol=symbol, alt=alt,
                 order=lie_order_markup(fam, n, q),
+                order_alt=lie_order_formula(fam, n, q) if concrete else "",
                 category=fam.category, generic=not concrete)
 
 
-def cyclic_cell(q, show_atlas: bool = True) -> Cell | None:
-    """The cyclic column: ``Z/pZ`` for a prime ``p``."""
+def cyclic_cell(q, show_alt: bool = True) -> Cell | None:
+    """The cyclic column: C_p, the cyclic group of prime order p.
+
+    C with a subscript and no argument is the cyclic group;  C_n(q), with a
+    field, is the symplectic family.  The two are told apart by the argument,
+    and they never share a column.
+    """
     if q is None:
-        return Cell(symbol="ℤ/pℤ", atlas="C(p),  p prime" if show_atlas else "",
+        return Cell(symbol=f"C{sub('p')}", alt="p prime" if show_alt else "",
                     order="p", category=CYCLIC, generic=True)
     if not arith.is_prime(q):
         return None
-    return Cell(symbol=f"ℤ/{q}ℤ", atlas=f"C({q})" if show_atlas else "",
-                order=str(q), category=CYCLIC)
+    alt = _alt_line([f"A{sub(2)}(1)"]) if (show_alt and q == 3) else ""
+    return Cell(symbol=f"C{sub(q)}", alt=alt, order=str(q), category=CYCLIC)
 
 
-def alternating_cell(n, show_atlas: bool = True) -> Cell:
+def alternating_cell(n, show_alt: bool = True) -> Cell:
     if n is None:
-        return Cell(symbol="Alt(n)", atlas="A<sub>n</sub>,  n ≥ 5" if show_atlas else "",
-                    order="n! / 2", category=ALTERNATING, generic=True)
+        return Cell(symbol=f"A{sub('n')}", order="n! / 2",
+                    category=ALTERNATING, generic=True)
     fac = arith.factor_factorial(n)
     arith.merge(fac, {2: 1}, sign=-1)
-    return Cell(symbol=f"Alt({n})", atlas=f"A{sub(n)}" if show_atlas else "",
-                order=factorisation_markup(fac), category=ALTERNATING)
+    return Cell(symbol=_alt(n), order=factorisation_markup(fac),
+                category=ALTERNATING)
 
 
 # --------------------------------------------------------------------------
@@ -540,9 +606,9 @@ SPORADIC_GROUPS: list[tuple[str, str, int]] = [
 ]
 
 
-def sporadic_cells(show_atlas: bool = True) -> list[Cell]:
+def sporadic_cells(show_alt: bool = True) -> list[Cell]:
     return [
-        Cell(symbol=sym, atlas=(name if show_atlas else ""),
+        Cell(symbol=sym, alt=(name if show_alt else ""),
              order=factorisation_markup(arith.factor(order)), category=SPORADIC)
         for sym, name, order in SPORADIC_GROUPS
     ]

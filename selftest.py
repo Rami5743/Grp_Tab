@@ -96,12 +96,12 @@ def drawn_cells(cfg: PosterConfig):
             if col.family is None:
                 cell = G.cyclic_cell(row.q)
                 if cell is not None:
-                    out.append((f"Z/{row.q}Z", row.q, cell))
+                    out.append((f"C_{row.q}", row.q, cell))
                 continue
             if col.rank is None:
                 continue
             cell = G.lie_cell(col.family, col.rank, row.q)
-            if cell is None or cell.ghost:
+            if cell is None:
                 continue
             if row.q == 1:                      # A_n(1) = Alt(n+1)
                 out.append((f"A_{col.rank}(1)",
@@ -148,7 +148,7 @@ def test_simple_orders() -> None:
     for name, order, _ in drawn_cells(PosterConfig()):
         if order <= 1:
             FAILURES.append(f"{name} has order {order}")
-        if arith.is_prime(order) and not name.startswith("Z/"):
+        if arith.is_prime(order) and not (name.startswith("C_") and "(" not in name):
             FAILURES.append(f"{name} has prime order but is not in the cyclic column")
 
 
@@ -158,9 +158,10 @@ def test_glyphs() -> None:
     cfg = PosterConfig()
     text = cfg.title + cfg.subtitle + "".join(Poster.NOTES)
     text += "".join(G.CATEGORY_TITLES.values())
+    text += "".join(a + b for a, b in G.HOLE_KEY)
     for name, _order, cell in drawn_cells(cfg):
         if cell is not None:
-            text += cell.symbol + cell.order + cell.atlas + cell.ghost
+            text += cell.symbol + cell.order + cell.alt
     for fam in G.LIE_FAMILIES:
         for n in (None, fam.min_rank):
             for q in (None, 4):
@@ -169,7 +170,7 @@ def test_glyphs() -> None:
                 except Exception:
                     continue
                 if c is not None:
-                    text += c.symbol + c.order + c.atlas + c.ghost
+                    text += c.symbol + c.order + c.alt
     text = text.replace("<super>", "").replace("</super>", "")
     text = text.replace("<sub>", "").replace("</sub>", "")
     missing = missing_glyphs(text, MATH)
