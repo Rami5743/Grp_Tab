@@ -107,7 +107,7 @@ class Family:
     atlas: Callable[[str], str]        # rank -> ATLAS/classical name, "(q)" appended later
     q_exponent: Callable[[str], str]   # rank -> exponent N of q, as markup
     terms: Callable[[int], list]       # concrete rank -> [(k, sign, mult), ...]
-    generic_terms: Callable[[], str]   # product notation for a generic rank
+    generic_terms: Callable[[], list]  # product notation for a generic rank
     divisor: Callable[[int, int], int] = lambda n, q: 1
     divisor_markup: Callable[[str, str], str] = lambda n, q: ""
     q_allowed: Callable[[int], bool] = lambda q: True
@@ -122,6 +122,9 @@ class Family:
     # Suzuki and Ree exist only for q = p**(2m+1);  this holds that p, and the
     # generic cell is then written out in powers of p rather than in q
     q_form: int | None = None
+    # a closed form for the printed factors, where the one the order is
+    # computed from would print badly
+    display_factors: Callable[[str], list] | None = None
 
 
 def _gcd_markup(a: str, b: str) -> str:
@@ -146,16 +149,15 @@ def _shift(x: str, delta: int) -> str:
     return f"{x}{'+' if delta > 0 else MINUS}{abs(delta)}"
 
 
-def _terms_markup(terms: list, q: str) -> str:
-    """Render ``[(k, sign, mult), ...]`` as ``(q^k-1)(q^k+1)/(q^k-1)``."""
-    num, den = [], []
-    for k, sign, mult in sorted(terms, key=lambda t: -t[0]):
-        piece = f"({power(q, k)}{'+' if sign > 0 else MINUS}1)"
-        (num if mult > 0 else den).append(piece)
-    out = " ".join(num)                     # a factor is never split in two
-    if den:
-        out += " / " + " ".join(den)
-    return out
+def _factor_strings(terms: list, q: str) -> list[str]:
+    """``[(k, sign, mult), ...]`` as the factors ``(q^k-1)``, largest first.
+
+    ``mult = -1`` would be a factor in the denominator;  no family uses one in
+    its printed form, and a family whose closed form needs one supplies its own
+    factors through ``display_factors``.
+    """
+    return [f"({power(q, k)}{'+' if sign > 0 else MINUS}1)"
+            for k, sign, mult in sorted(terms, key=lambda t: -t[0]) if mult > 0]
 
 
 # ---- the rank-parametrised families --------------------------------------
@@ -174,7 +176,7 @@ RANKED_FAMILIES = [
         atlas=lambda n: f"L{sub(n + '+1' if not n.isdigit() else int(n) + 1)}",
         q_exponent=lambda n: "n(n+1)/2" if not n.isdigit() else str(int(n) * (int(n) + 1) // 2),
         terms=_A,
-        generic_terms=lambda: f"{PROD}{sub('i=2')}{sup('n+1')}({power('q', 'i')}{MINUS}1)",
+        generic_terms=lambda: [f"{PROD}{sub('i=2')}{sup('n+1')}({power('q', 'i')}{MINUS}1)"],
         divisor=lambda n, q: gcd(n + 1, q - 1),
         divisor_markup=lambda n, q: _gcd_markup(_shift(n, 1), _shift(q, -1)),
         title="Linear",
@@ -187,7 +189,7 @@ RANKED_FAMILIES = [
         atlas=lambda n: f"U{sub(n + '+1' if not n.isdigit() else int(n) + 1)}",
         q_exponent=lambda n: "n(n+1)/2" if not n.isdigit() else str(int(n) * (int(n) + 1) // 2),
         terms=_2A,
-        generic_terms=lambda: f"{PROD}{sub('i=2')}{sup('n+1')}({power('q', 'i')}{MINUS}({MINUS}1){sup('i')})",
+        generic_terms=lambda: [f"{PROD}{sub('i=2')}{sup('n+1')}({power('q', 'i')}{MINUS}({MINUS}1){sup('i')})"],
         divisor=lambda n, q: gcd(n + 1, q + 1),
         divisor_markup=lambda n, q: _gcd_markup(_shift(n, 1), _shift(q, 1)),
         title="Unitary",
@@ -200,7 +202,7 @@ RANKED_FAMILIES = [
         atlas=lambda n: f"O{sub('2n+1' if not n.isdigit() else 2 * int(n) + 1)}",
         q_exponent=lambda n: "n\u00b2" if not n.isdigit() else str(int(n) ** 2),
         terms=_BC,
-        generic_terms=lambda: f"{PROD}{sub('i=1')}{sup('n')}({power('q', '2i')}{MINUS}1)",
+        generic_terms=lambda: [f"{PROD}{sub('i=1')}{sup('n')}({power('q', '2i')}{MINUS}1)"],
         divisor=lambda n, q: gcd(2, q - 1),
         divisor_markup=lambda n, q: _gcd_markup("2", _shift(q, -1)),
         title="Orthogonal (odd)",
@@ -213,7 +215,7 @@ RANKED_FAMILIES = [
         atlas=lambda n: f"S{sub('2n' if not n.isdigit() else 2 * int(n))}",
         q_exponent=lambda n: "n\u00b2" if not n.isdigit() else str(int(n) ** 2),
         terms=_BC,
-        generic_terms=lambda: f"{PROD}{sub('i=1')}{sup('n')}({power('q', '2i')}{MINUS}1)",
+        generic_terms=lambda: [f"{PROD}{sub('i=1')}{sup('n')}({power('q', '2i')}{MINUS}1)"],
         divisor=lambda n, q: gcd(2, q - 1),
         divisor_markup=lambda n, q: _gcd_markup("2", _shift(q, -1)),
         title="Symplectic",
@@ -225,8 +227,9 @@ RANKED_FAMILIES = [
         atlas=lambda n: f"O{sup('+')}{sub('2n' if not n.isdigit() else 2 * int(n))}",
         q_exponent=lambda n: "n(n" + MINUS + "1)" if not n.isdigit() else str(int(n) * (int(n) - 1)),
         terms=_D,
-        generic_terms=lambda: f"({power('q', 'n')}{MINUS}1){PROD}{sub('i=1')}{sup('n' + MINUS + '1')}"
-                              f"({power('q', '2i')}{MINUS}1)",
+        generic_terms=lambda: [f"({power('q', 'n')}{MINUS}1)",
+                               f"{PROD}{sub('i=1')}{sup('n' + MINUS + '1')}"
+                               f"({power('q', '2i')}{MINUS}1)"],
         divisor=lambda n, q: gcd(4, q ** n - 1),
         divisor_markup=lambda n, q: _gcd_markup("4", f"{power(q, n)}{MINUS}1"),
         title="Orthogonal (plus)",
@@ -238,8 +241,9 @@ RANKED_FAMILIES = [
         atlas=lambda n: f"O{sup(MINUS)}{sub('2n' if not n.isdigit() else 2 * int(n))}",
         q_exponent=lambda n: "n(n" + MINUS + "1)" if not n.isdigit() else str(int(n) * (int(n) - 1)),
         terms=_2D,
-        generic_terms=lambda: f"({power('q', 'n')}+1){PROD}{sub('i=1')}{sup('n' + MINUS + '1')}"
-                              f"({power('q', '2i')}{MINUS}1)",
+        generic_terms=lambda: [f"({power('q', 'n')}+1)",
+                               f"{PROD}{sub('i=1')}{sup('n' + MINUS + '1')}"
+                               f"({power('q', '2i')}{MINUS}1)"],
         divisor=lambda n, q: gcd(4, q ** n + 1),
         divisor_markup=lambda n, q: _gcd_markup("4", f"{power(q, n)}+1"),
         title="Orthogonal (minus)",
@@ -259,7 +263,7 @@ def _fixed(key, category, symbol, atlas, N, terms, divisor=lambda q: 1,
         atlas=lambda n, _a=atlas: _a,
         q_exponent=lambda n, _N=N: str(_N),
         terms=lambda n, _t=terms: _t,
-        generic_terms=lambda: "",
+        generic_terms=lambda: [],
         divisor=lambda n, q, _d=divisor: _d(q),
         divisor_markup=lambda n, q, _d=divisor_markup: _d(q),
         q_allowed=q_allowed,
@@ -329,6 +333,14 @@ def odd_power_markup(p: int, k: int = 1) -> str:
 LIE_FAMILIES = RANKED_FAMILIES + EXCEPTIONAL_FAMILIES
 FAMILY_BY_KEY = {f.key: f for f in LIE_FAMILIES}
 
+# the order of 3D4(q) is computed from (q**12 - 1)/(q**4 - 1), which factors
+# through cyclotomic values;  printed, that quotient is the closed form
+FAMILY_BY_KEY["3D4"].display_factors = lambda q: [
+    f"({power(q, 8)}+{power(q, 4)}+1)",
+    f"({power(q, 6)}{MINUS}1)",
+    f"({power(q, 2)}{MINUS}1)",
+]
+
 #: order of the families inside one rank block: untwisted classical, twisted
 #: classical, untwisted exceptional, twisted exceptional
 FAMILY_ORDER = ["A", "B", "C", "D", "2A", "2D",
@@ -384,26 +396,31 @@ def lie_order_formula(fam: Family, n, q) -> str:
 
     ``n`` or ``q`` may be ``None``, meaning "generic".  For Suzuki and Ree the
     generic order is written in powers of 2 or of 3, since q is not free there.
+    Every piece is separated by one space -- the only place a line may break,
+    so no factor is ever split in two.
     """
     if q is None and fam.q_form is not None:
         p = fam.q_form
-        body = odd_power_markup(p, fam.q_exp_value(0))
-        for k, sign, mult in sorted(fam.terms(0), key=lambda t: -t[0]):
-            piece = f"({odd_power_markup(p, k)}{'+' if sign > 0 else MINUS}1)"
-            body += (" " if mult > 0 else " / ") + piece
-        return body
+        pieces = [odd_power_markup(p, fam.q_exp_value(0))]
+        pieces += [f"({odd_power_markup(p, k)}{'+' if sign > 0 else MINUS}1)"
+                   for k, sign, mult in sorted(fam.terms(0), key=lambda t: -t[0])
+                   if mult > 0]
+        return " ".join(pieces)
 
     q_str = "q" if q is None else str(q)
     n_str = "n" if n is None else str(n)
-    body = power(q_str, fam.q_exponent(n_str))
+    pieces = [power(q_str, fam.q_exponent(n_str))]
     if n is None and fam.ranked:
-        body += fam.generic_terms().replace("q", q_str) if q is not None else fam.generic_terms()
+        pieces += [t.replace("q", q_str) for t in fam.generic_terms()]
+    elif fam.display_factors is not None:
+        pieces += fam.display_factors(q_str)
     else:
-        body += _terms_markup(fam.terms(n if n is not None else fam.min_rank), q_str)
+        pieces += _factor_strings(fam.terms(n if n is not None else fam.min_rank), q_str)
+    out = " ".join(pieces)
     dm = fam.divisor_markup(n_str, q_str)
     if dm:
-        body += " / " + dm
-    return body
+        out += " / " + dm
+    return out
 
 
 def lie_order_markup(fam: Family, n, q) -> str:

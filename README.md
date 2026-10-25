@@ -129,9 +129,16 @@ Orders of groups of Lie type are products of `q^N` with factors `q^k ± 1`.
 Factoring those directly is hopeless for, say, `E_8(243)`, but each
 `q^k − 1` splits into cyclotomic values `Φ_e(q)`, each of size about `q^φ(e)`,
 and those factor in microseconds.  `q^k + 1` is handled as
-`(q^{2k} − 1)/(q^k − 1)`.  A factorisation is printed with a space after each
-`·`, which is the only place a line may break, so a prime power is never split
-across two lines.
+`(q^{2k} − 1)/(q^k − 1)`.
+
+A printed order — factorisation or formula — puts a single space between its
+pieces and nowhere else, so a line can only break between two factors, never
+inside one, and the pieces line up the same way in every cell.  Where the form
+an order is *computed* from would print badly, the family supplies the closed
+form instead: `³D_4(q)` is computed through `(q^12 − 1)/(q^4 − 1)`, which
+factors cyclotomically, but prints as `q^12 (q^8 + q^4 + 1) (q^6 − 1) (q^2 − 1)`.
+Order lines are set with looser leading than running text, since they are full
+of superscripts.
 
 ### On the "no repetitions" rule
 

@@ -141,6 +141,9 @@ class PosterConfig:
     #: not the size it is usually printed at
     order_size: float = 14.0
     min_order_size: float = 5.0
+    #: line spacing of the order line, as a multiple of its font size;  maths
+    #: full of superscripts needs more than running text does
+    order_leading: float = 1.34
 
     title: str = "A Periodic Table of the Finite Simple Groups"
     subtitle: str = ("Every finite simple group appears exactly once, in its simplest form.  "
@@ -235,19 +238,21 @@ def _style(font, size, color, align=TA_CENTER, leading=None):
 
 
 def fitted(text: str, font: str, color, max_w: float, max_h: float,
-           start: float, floor: float, align=TA_CENTER) -> tuple[Paragraph, float, float]:
+           start: float, floor: float, align=TA_CENTER,
+           leading: float = 1.14) -> tuple[Paragraph, float, float]:
     """Largest paragraph of ``text`` (down to ``floor`` pt) fitting the box."""
     size = start
     while True:
-        p = Paragraph(text, _style(font, size, color, align))
+        p = Paragraph(text, _style(font, size, color, align, size * leading))
         w, h = p.wrap(max_w, 10_000)
         if h <= max_h or size <= floor:
             return p, w, h
         size -= 0.3
 
 
-def fits_at(text: str, font: str, max_w: float, max_h: float, size: float) -> bool:
-    p = Paragraph(text, _style(font, size, INK_SOFT))
+def fits_at(text: str, font: str, max_w: float, max_h: float, size: float,
+            leading: float = 1.14) -> bool:
+    p = Paragraph(text, _style(font, size, INK_SOFT, leading=size * leading))
     return p.wrap(max_w, 10_000)[1] <= max_h
 
 
@@ -312,12 +317,13 @@ def draw_cell(c, cell: G.Cell, x: float, y: float, w: float, h: float,
         text = cell.order
         # a factorisation that will not fit even at the smallest size gives
         # way to the order formula with q substituted in
-        if cell.order_alt and not fits_at(text, MATH, inner, box_h, cfg.min_order_size):
+        if cell.order_alt and not fits_at(text, MATH, inner, box_h,
+                                          cfg.min_order_size, cfg.order_leading):
             text = cell.order_alt
         # the floor here is a hard one: the text must never cross into the
         # symbol above it, so it keeps shrinking past the preferred minimum
         p_ord, _, oh = fitted(text, MATH, INK_SOFT, inner, box_h,
-                              cfg.order_size, 3.4)
+                              cfg.order_size, 3.4, leading=cfg.order_leading)
         draw_para(c, p_ord, x + pad, y + pad + (box_h + oh) / 2, inner, oh)
         c.setStrokeColor(tint(hue, 0.45))
         c.setLineWidth(0.4)
