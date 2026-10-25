@@ -16,13 +16,14 @@ LaTeX or other external toolchain is needed.
   only one-off coincidences, such as `A_1(7) ≅ A_2(2)`.  A second notation for
   the same construction (`A_n(q) = L_{n+1}(q)`) is in the key of families
   instead, and a rule about whole families (`B_n(q) ≅ C_n(q)` for even `q`) is
-  stated once in the key of empty cells rather than on each of the thirty-odd
-  cells it applies to;
+  noted on each cell it applies to and stated once, generically, in the key of
+  empty cells;
 * the middle line is **the group**;  the three bands have fixed heights, so
   symbols and rules line up right across a row, and each band is given room
   beyond its measured height — a symbol's subscripts reach below the line box
   reportlab reports and the order's superscripts reach above theirs, so
-  without that margin the two would touch;
+  without that margin the two would touch, and the symbol sits at the top of
+  its band so that all the slack falls below it;
 * the bottom line is the **prime factorisation of its order**.  A cell that
   carries a parameter shows the generic order formula instead, and so does a
   cell whose factorisation is too long to print (with the defaults, only
@@ -36,7 +37,7 @@ element":** `C_p` is cyclic of order `p` and `A_m` is alternating of degree
 is what tells the two apart.
 
 **The vertical axis is the field size `q`.**  The `q = 1` row comes first,
-then one row per prime power up to `--q-max`, then the rows of `--extra-q`,
+then one row per prime power up to `--q-max`, then any rows of `--extra-q`,
 then a generic `q` row.  Wherever prime powers are skipped the axis carries an
 ellipsis.
 
@@ -45,9 +46,11 @@ ellipsis.
   `A_{n+1}`.  Only type A is simple there, which is why the rest of that row
   is empty.  `A_n(1)` is an address, not a name: the group is printed as
   `A_{n+1}`.
-* **The `--extra-q` rows** (243 by default) are there because the Suzuki and
-  Ree families exist only for `q = 2^(2m+1)` and `q = 3^(2m+1)`; without
-  `q = 243` the `²G_2` column would carry a single group.
+* **`--extra-q`** adds rows past `--q-max`.  It is empty by default; setting
+  it to `243`, say, gives the `²G_2` column a second group, since the Suzuki
+  and Ree families exist only for `q = 2^(2m+1)` and `q = 3^(2m+1)`.  Their
+  generic cells are written in powers of 2 or of 3 rather than in `q`, with
+  brackets grown to enclose the exponent.
 
 **The first column** is the cyclic groups `C_p` — a cell exists only on the
 rows whose `q` is prime.
@@ -74,8 +77,6 @@ apart.
 **Background colour encodes the type** of group: cyclic, alternating,
 **Chevalley** (the untwisted groups of Lie type), **Steinberg** (`²A_n`, `²D_n`,
 `³D_4`, `²E_6`), **Suzuki and Ree** (`²B_2`, `²G_2`, `²F_4`), and sporadic.
-The generic cell of a Suzuki or Ree family is written in powers of 2 or of 3
-rather than in `q`, since `q` is not free there.
 
 **No repetitions.**  Every group is printed under its simplest description
 only.  Where a group would appear twice the cell is simply **left empty**, and
@@ -96,12 +97,12 @@ the ones used for `out/finite_simple_groups.pdf`:
 
 | option | default | meaning |
 |---|---|---|
-| `--rank-max` | 10 | largest rank with its own block of columns, before the ellipsis |
+| `--rank-max` | 9 | largest rank with its own block of columns, before the ellipsis |
 | `--q-max` | 32 | largest field size in the contiguous block of rows |
-| `--extra-q` | 243 | further q rows, so that no column carries a single group |
+| `--extra-q` | (none) | further q rows past `--q-max` |
 | `--no-f1-row` | off | drop the `q = 1` row, and with it the alternating groups |
 | `--sporadic-cols` | 26 | columns of the sporadic block (26 = a single strip) |
-| `--cell-w`, `--cell-h` | 100, 100 | cell size in points |
+| `--cell-w`, `--cell-h` | 100, 106 | cell size in points |
 | `--dots-frac` | 0.42 | size of an ellipsis row/column, relative to a cell |
 | `--symbol-size`, `--order-size` | 20, 14 | font size caps;  each line is set as large as its box allows |
 | `--max-order-lines` | 7 | lines the order line may wrap onto |
@@ -110,7 +111,7 @@ the ones used for `out/finite_simple_groups.pdf`:
 
 The page size is computed from the grid, so changing `--rank-max` or
 `--q-max` simply makes a larger or smaller poster.  The defaults give
-**244 × 98 cm**.
+**223 × 97 cm**.
 
 ## How it is put together
 

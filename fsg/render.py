@@ -79,7 +79,7 @@ HUES = {
     G.CHEVALLEY: "#2a78d6",
     G.STEINBERG: "#1baf7a",
     G.SUZUKI_REE: "#eda100",
-    G.ALTERNATING: "#008300",
+    G.ALTERNATING: "#e87ba4",
     G.SPORADIC: "#6250d6",
 }
 
@@ -108,7 +108,7 @@ class PosterConfig:
     #: largest rank with its own block of explicit columns.  The default, 8,
     #: is the last rank at which a new family appears (E_8); past it every
     #: block repeats the same six classical families.
-    rank_max: int = 10
+    rank_max: int = 9
     #: largest field size q shown explicitly (rows are the prime powers <= this)
     q_max: int = 32
     #: include the q = 1 row, where A_n(1) = Alt(n+1)
@@ -116,12 +116,12 @@ class PosterConfig:
     #: further rows past ``q_max``, chosen so that the Suzuki and Ree columns
     #: -- which only exist for q = 2^(2m+1) and 3^(2m+1) -- carry at least
     #: two groups each
-    extra_q: tuple = (243,)
+    extra_q: tuple = ()
     #: columns of the sporadic block (26 puts them all in one strip)
     sporadic_cols: int = 26
 
     cell_w: float = 100.0
-    cell_h: float = 100.0
+    cell_h: float = 106.0
     dots_frac: float = 0.42          # width/height of an ellipsis row or column
     gap: float = 3.0                 # gap between neighbouring cells
     series_gap: float = 22.0         # extra gap between sporadic series
@@ -293,16 +293,18 @@ def draw_cell(c, cell: G.Cell, x: float, y: float, w: float, h: float,
     # a symbol carries subscripts that reach below the line box reportlab
     # reports, and the order line above carries superscripts that reach above
     # it, so both bands are given room beyond their measured height
-    band_sym = cfg.symbol_size * 1.34
+    band_sym = cfg.symbol_size * 1.45
     top = y + h - 6.0 - 1.5
     if cell.alt:
         p, _, ph = fitted(cell.alt, MATH, INK_SOFT, inner, band_alt, cfg.alt_size, 4.2,
                           align=TA_LEFT)
         draw_para(c, p, x + pad, top, inner, ph)
-    top -= band_alt + 1.0
+    top -= band_alt + 2.0
 
+    # the symbol sits at the top of its band, so all the slack falls below it,
+    # which is where the subscripts go
     p_sym, _, sh = fitted(cell.symbol, MATH, INK, inner, band_sym, cfg.symbol_size, 7.0)
-    draw_para(c, p_sym, x + pad, top - (band_sym - sh) / 2, inner, sh)
+    draw_para(c, p_sym, x + pad, top, inner, sh)
     top -= band_sym + 4.0
 
     if cell.order:
@@ -564,9 +566,6 @@ class Poster:
         "alternating groups.",
         "\u2022  A cell carrying a parameter shows the generic order formula in place of a "
         "prime factorisation, and so does a cell whose factorisation is too long to print.",
-        "\u2022  The rows past q = 13 are selected larger prime powers, chosen so that the "
-        "Suzuki and Ree columns \u2014 which exist only for q = 2<super>2m+1</super> and "
-        "q = 3<super>2m+1</super> \u2014 carry more than one group each.",
         "\u2022  C<sub>n</sub>(q) \u2245 B<sub>n</sub>(q) for q even, so only the odd-q cells "
         "of the C columns are printed.",
         "\u2022  <super>2</super>B<sub>2</sub>(q) and <super>2</super>F<sub>4</sub>(q) exist for "

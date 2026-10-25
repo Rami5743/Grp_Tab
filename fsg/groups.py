@@ -39,6 +39,14 @@ def power(base, exp) -> str:
     return str(base) if exp == "1" else f"{base}{sup(exp)}"
 
 
+def big_parens(body: str, grow: int = 6) -> str:
+    """``(body)`` with brackets tall enough to enclose it, as LaTeX's
+    \\left( \\right) does.  The size is relative, so the brackets follow
+    whatever size the cell ends up setting its symbol at."""
+    big = '<font size="+%d">' % grow
+    return big + "(</font>" + body + big + ")</font>"
+
+
 def factorisation_markup(fac: dict[int, int]) -> str:
     """``p1^e1 . p2^e2 . ...``, with a space after each dot.
 
@@ -484,23 +492,27 @@ def _alt_line(parts: list[str], lead: str = "") -> str:
                           for i, t in enumerate(parts))
 
 
-def alt_descriptions(fam_key: str, n: int, q: int) -> list[str]:
-    """Only the one-off coincidences.
+def alt_descriptions(fam_key: str, n, q: int) -> list[str]:
+    """Other descriptions of the group in this cell.  ``n`` may be ``None``
+    for a generic-rank column, where the B = C rule still applies."""
+    out = list(ALT_DESCRIPTIONS.get((fam_key, n, q), ()))
+    if fam_key == "B" and q % 2 == 0:            # B_n(q) = C_n(q), q even
+        out.append(f"C{sub(n if n is not None else 'n')}({q})")
+    return out
 
-    B_n(q) = C_n(q) for every even q is a rule about whole families, not a
-    coincidence about one group; it is stated once, in the key of empty cells,
-    rather than on each of the thirty-odd cells it applies to.
+
+def duplicate_of(fam_key: str, n, q: int) -> str | None:
+    """Where this group lives instead, or ``None`` if this is its home.
+
+    ``n`` may be ``None``:  C_n(q) = B_n(q) holds for every even q whatever
+    the rank, so it empties the even-q cells of the generic-rank C column just
+    as it empties those of C_3, C_4, ...
     """
-    return list(ALT_DESCRIPTIONS.get((fam_key, n, q), ()))
-
-
-def duplicate_of(fam_key: str, n: int, q: int) -> str | None:
-    """Where this group lives instead, or ``None`` if this is its home."""
-    if (fam_key, n, q) in DUPLICATES:
-        return DUPLICATES[(fam_key, n, q)]
     if fam_key == "C" and q % 2 == 0:
-        return f"B{sub(n)}({q})"
-    return None
+        return f"B{sub(n if n is not None else 'n')}({q})"
+    if n is None:
+        return None
+    return DUPLICATES.get((fam_key, n, q))
 
 
 # --------------------------------------------------------------------------
@@ -536,18 +548,25 @@ def lie_cell(fam: Family, n, q, show_alt: bool = True) -> Cell | None:
     concrete = n is not None and q is not None
     n_str = "n" if n is None else str(n)
     q_str = "q" if q is None else str(q)
-    if q is None and fam.q_form is not None:
-        q_str = power(fam.q_form, "2m+1")
 
     if q is not None and not fam.q_allowed(q):
         return None
     if n is not None and n < fam.min_rank:
         return None
 
-    symbol = f"{fam.symbol(n_str)}({q_str})"
+    if q is None and fam.q_form is not None:   # Suzuki and Ree: q = p**(2m+1)
+        symbol = fam.symbol(n_str) + big_parens(power(fam.q_form, "2m+1"))
+    else:
+        symbol = f"{fam.symbol(n_str)}({q_str})"
     alt = ""
-    if show_alt and n is not None and q is not None:
+    if show_alt and q is not None:
         alt = _alt_line(alt_descriptions(fam.key, n if fam.ranked else 0, q))
+
+    # C_n(q) = B_n(q) for every even q whatever the rank, so this rule empties
+    # the generic-rank C column as well;  the coincidences that depend on the
+    # rank are handled below, where both parameters are concrete
+    if q is not None and fam.key == "C" and q % 2 == 0:
+        return None
 
     if concrete:
         rank_key = n if fam.ranked else 0
