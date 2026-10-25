@@ -530,7 +530,9 @@ def lie_cell(fam: Family, n, q, show_alt: bool = True) -> Cell | None:
         if (fam.key, rank_key, q) in NOT_SIMPLE_EMPTY:
             return None
         if (fam.key, rank_key, q) == TITS:
-            return Cell(symbol=f"{sup(2)}F{sub(4)}(2)′", alt="Tits group",
+            # the Tits group;  "Tits group" is another name for it, not
+            # another description, so the top line stays empty
+            return Cell(symbol=f"{sup(2)}F{sub(4)}(2)′",
                         order=factorisation_markup(arith.factor(17971200)),
                         category=EXCEPTIONAL_TWISTED, note="derived subgroup")
         # a group that is not simple here, or that is isomorphic to one

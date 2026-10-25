@@ -16,11 +16,14 @@ LaTeX or other external toolchain is needed.
   only genuine coincidences, such as `A_1(7) ≅ A_2(2)`, never a second
   notation for the same construction (`A_n(q) = L_{n+1}(q)` is in the key of
   families instead);
-* the middle line is **the group**;
+* the middle line is **the group**;  the three bands have fixed heights, so
+  symbols and rules line up right across a row;
 * the bottom line is the **prime factorisation of its order**.  A cell that
   carries a parameter shows the generic order formula instead, and so does a
   cell whose factorisation is too long to print (with the defaults, only
-  `E_8(243)`).
+  `E_8(243)`).  Each of the three lines is set as large as its own box
+  allows, so the order line grows up to its cap wherever the factorisation is
+  short.
 
 **A symbol with a subscript and no field is a group over "the field with one
 element":** `C_p` is cyclic of order `p` and `A_m` is alternating of degree
@@ -37,9 +40,9 @@ ellipsis.
   `A_{n+1}`.  Only type A is simple there, which is why the rest of that row
   is empty.  `A_n(1)` is an address, not a name: the group is printed as
   `A_{n+1}`.
-* **The `--extra-q` rows** (27, 32, 243 by default) are there because the
-  Suzuki and Ree families exist only for `q = 2^(2m+1)` and `q = 3^(2m+1)`;
-  without them those columns would carry a single group.
+* **The `--extra-q` rows** (243 by default) are there because the Suzuki and
+  Ree families exist only for `q = 2^(2m+1)` and `q = 3^(2m+1)`; without
+  `q = 243` the `²G_2` column would carry a single group.
 
 **The first column** is the cyclic groups `C_p` — a cell exists only on the
 rows whose `q` is prime.
@@ -84,20 +87,20 @@ the ones used for `out/finite_simple_groups.pdf`:
 | option | default | meaning |
 |---|---|---|
 | `--rank-max` | 10 | largest rank with its own block of columns, before the ellipsis |
-| `--q-max` | 13 | largest field size in the contiguous block of rows |
-| `--extra-q` | 27,32,243 | further q rows, so that no column carries a single group |
+| `--q-max` | 32 | largest field size in the contiguous block of rows |
+| `--extra-q` | 243 | further q rows, so that no column carries a single group |
 | `--no-f1-row` | off | drop the `q = 1` row, and with it the alternating groups |
 | `--sporadic-cols` | 26 | columns of the sporadic block (26 = a single strip) |
 | `--cell-w`, `--cell-h` | 100, 100 | cell size in points |
 | `--dots-frac` | 0.42 | size of an ellipsis row/column, relative to a cell |
-| `--symbol-size`, `--order-size` | 20, 8.2 | starting font sizes (text is shrunk to fit) |
+| `--symbol-size`, `--order-size` | 20, 14 | font size caps;  each line is set as large as its box allows |
 | `--max-order-lines` | 7 | lines the order line may wrap onto |
 | `--no-alt-names` | off | drop the top line of every cell |
 | `--title`, `--subtitle` | | the masthead text |
 
 The page size is computed from the grid, so changing `--rank-max` or
 `--q-max` simply makes a larger or smaller poster.  The defaults give
-**244 × 76 cm**.
+**244 × 98 cm**.
 
 ## How it is put together
 

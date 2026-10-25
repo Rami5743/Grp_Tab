@@ -111,13 +111,13 @@ class PosterConfig:
     #: block repeats the same six classical families.
     rank_max: int = 10
     #: largest field size q shown explicitly (rows are the prime powers <= this)
-    q_max: int = 13
+    q_max: int = 32
     #: include the q = 1 row, where A_n(1) = Alt(n+1)
     include_f1: bool = True
     #: further rows past ``q_max``, chosen so that the Suzuki and Ree columns
     #: -- which only exist for q = 2^(2m+1) and 3^(2m+1) -- carry at least
     #: two groups each
-    extra_q: tuple = (27, 32, 243)
+    extra_q: tuple = (243,)
     #: columns of the sporadic block (26 puts them all in one strip)
     sporadic_cols: int = 26
 
@@ -137,7 +137,9 @@ class PosterConfig:
     max_order_lines: int = 7
     symbol_size: float = 20.0
     alt_size: float = 7.4
-    order_size: float = 8.2
+    #: the order line is set as large as its box allows -- this is the cap,
+    #: not the size it is usually printed at
+    order_size: float = 14.0
     min_order_size: float = 5.0
 
     title: str = "A Periodic Table of the Finite Simple Groups"
@@ -285,35 +287,34 @@ def draw_cell(c, cell: G.Cell, x: float, y: float, w: float, h: float,
     c.rect(x, y + h - 6.0, w, 3.0, stroke=0, fill=1)
     c.restoreState()
 
-    # one line is always reserved for the top line, so that the symbols of a
-    # row sit at the same height whether or not a cell has one
-    band = cfg.alt_size * 1.25
+    # The three bands have fixed heights, so symbols, rules and order lines
+    # all sit at the same height right across a row.
+    band_alt = cfg.alt_size * 1.25
+    band_sym = cfg.symbol_size * 1.22
     top = y + h - 6.0 - 1.5
     if cell.alt:
-        p, _, ph = fitted(cell.alt, MATH, INK_SOFT, inner, band, cfg.alt_size, 4.2,
+        p, _, ph = fitted(cell.alt, MATH, INK_SOFT, inner, band_alt, cfg.alt_size, 4.2,
                           align=TA_LEFT)
         draw_para(c, p, x + pad, top, inner, ph)
-    top -= band + 1.0
+    top -= band_alt + 1.0
 
-    p_sym, _, sh = fitted(cell.symbol, MATH, INK, inner, cfg.symbol_size * 1.75,
-                          cfg.symbol_size, 7.0)
-    draw_para(c, p_sym, x + pad, top, inner, sh)
-    top -= sh + 3.0
+    p_sym, _, sh = fitted(cell.symbol, MATH, INK, inner, band_sym, cfg.symbol_size, 7.0)
+    draw_para(c, p_sym, x + pad, top - (band_sym - sh) / 2, inner, sh)
+    top -= band_sym + 3.0
 
     if cell.order:
-        avail = top - (y + pad) - 3.0
-        max_h = min(avail, cfg.order_size * 1.16 * cfg.max_order_lines)
+        box_h = top - 1.5 - (y + pad)
         text = cell.order
         # a factorisation that will not fit even at the smallest size gives
         # way to the order formula with q substituted in
-        if cell.order_alt and not fits_at(text, MATH, inner, max_h, cfg.min_order_size):
+        if cell.order_alt and not fits_at(text, MATH, inner, box_h, cfg.min_order_size):
             text = cell.order_alt
-        p_ord, _, oh = fitted(text, MATH, INK_SOFT, inner, max_h,
+        p_ord, _, oh = fitted(text, MATH, INK_SOFT, inner, box_h,
                               cfg.order_size, cfg.min_order_size)
-        draw_para(c, p_ord, x + pad, y + pad + oh, inner, oh)
+        draw_para(c, p_ord, x + pad, y + pad + (box_h + oh) / 2, inner, oh)
         c.setStrokeColor(tint(hue, 0.45))
         c.setLineWidth(0.4)
-        c.line(x + pad * 2, y + pad + oh + 3.0, x + w - pad * 2, y + pad + oh + 3.0)
+        c.line(x + pad * 2, top - 0.5, x + w - pad * 2, top - 0.5)
 
     if cell.note:
         c.setFont(UI, 4.8)
