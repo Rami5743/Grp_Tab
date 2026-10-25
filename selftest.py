@@ -61,7 +61,7 @@ def test_sporadic_factorisations() -> None:
         "M<sub>24</sub>": {2: 10, 3: 3, 5: 1, 7: 1, 11: 1, 23: 1},
         "Co<sub>1</sub>": {2: 21, 3: 9, 5: 4, 7: 2, 11: 1, 13: 1, 23: 1},
     }
-    by_name = {sym: order for sym, _, order in G.SPORADIC_GROUPS}
+    by_name = {sym: order for sym, _, order, _s in G.SPORADIC_GROUPS}
     check("sporadic count", len(G.SPORADIC_GROUPS), 26)
     for name, fac in expected.items():
         check(f"|{name}|", arith.factor(by_name[name]), fac)
@@ -112,7 +112,7 @@ def drawn_cells(cfg: PosterConfig):
                 continue
             out.append((f"{col.family.key}_{col.rank}({row.q})",
                         G.lie_order_value(col.family, col.rank, row.q), cell))
-    for sym, _, order in G.SPORADIC_GROUPS:
+    for sym, _, order, _s in G.SPORADIC_GROUPS:
         out.append((sym, order, None))
     return out
 

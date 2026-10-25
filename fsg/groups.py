@@ -54,19 +54,17 @@ def factorisation_markup(fac: dict[int, int]) -> str:
 
 CYCLIC = "cyclic"
 ALTERNATING = "alternating"
-CLASSICAL = "classical"            # untwisted classical Lie type
-CLASSICAL_TWISTED = "classical2"   # twisted classical Lie type
-EXCEPTIONAL = "exceptional"        # untwisted exceptional Lie type
-EXCEPTIONAL_TWISTED = "exceptional2"
+CHEVALLEY = "chevalley"        # untwisted groups of Lie type
+STEINBERG = "steinberg"        # twisted by a diagram automorphism: 2A, 2D, 3D4, 2E6
+SUZUKI_REE = "suzuki_ree"      # 2B2, 2G2, 2F4
 SPORADIC = "sporadic"
 
 CATEGORY_TITLES = {
     CYCLIC: "Cyclic groups",
     ALTERNATING: "Alternating groups",
-    CLASSICAL: "Classical Lie type (untwisted)",
-    CLASSICAL_TWISTED: "Classical Lie type (twisted)",
-    EXCEPTIONAL: "Exceptional Lie type (untwisted)",
-    EXCEPTIONAL_TWISTED: "Exceptional Lie type (twisted)",
+    CHEVALLEY: "Chevalley groups",
+    STEINBERG: "Steinberg groups",
+    SUZUKI_REE: "Suzuki and Ree groups",
     SPORADIC: "Sporadic groups",
 }
 
@@ -83,7 +81,7 @@ class Cell:
     order_alt: str = ""          # same order as a formula, if the factorisation
                                  # is too long to print
     alt: str = ""                # top line: other descriptions of this group
-    category: str = CLASSICAL
+    category: str = CHEVALLEY
     generic: bool = False        # a parametrised cell (order is a formula)
     note: str = ""               # small marker, e.g. the prime of a derived subgroup
 
@@ -114,6 +112,9 @@ class Family:
     # rank of the Dynkin diagram;  the fixed-rank families use it to find the
     # rank block they belong to
     lie_rank: int = 0
+    # Suzuki and Ree exist only for q = p**(2m+1);  this holds that p, and the
+    # generic cell is then written out in powers of p rather than in q
+    q_form: int | None = None
 
 
 def _gcd_markup(a: str, b: str) -> str:
@@ -161,7 +162,7 @@ def _2D(n):     return [(n, +1, +1)] + [(2 * i, -1, +1) for i in range(1, n)]
 
 RANKED_FAMILIES = [
     Family(
-        key="A", category=CLASSICAL, ranked=True, min_rank=1,
+        key="A", category=CHEVALLEY, ranked=True, min_rank=1,
         symbol=lambda n: f"A{sub(n)}",
         atlas=lambda n: f"L{sub(n + '+1' if not n.isdigit() else int(n) + 1)}",
         q_exponent=lambda n: "n(n+1)/2" if not n.isdigit() else str(int(n) * (int(n) + 1) // 2),
@@ -174,7 +175,7 @@ RANKED_FAMILIES = [
         not_simple=lambda n, q: n == 1 and q < 4,
     ),
     Family(
-        key="2A", category=CLASSICAL_TWISTED, ranked=True, min_rank=2,
+        key="2A", category=STEINBERG, ranked=True, min_rank=2,
         symbol=lambda n: f"{sup(2)}A{sub(n)}",
         atlas=lambda n: f"U{sub(n + '+1' if not n.isdigit() else int(n) + 1)}",
         q_exponent=lambda n: "n(n+1)/2" if not n.isdigit() else str(int(n) * (int(n) + 1) // 2),
@@ -187,7 +188,7 @@ RANKED_FAMILIES = [
         not_simple=lambda n, q: n == 2 and q == 2,
     ),
     Family(
-        key="B", category=CLASSICAL, ranked=True, min_rank=2,
+        key="B", category=CHEVALLEY, ranked=True, min_rank=2,
         symbol=lambda n: f"B{sub(n)}",
         atlas=lambda n: f"O{sub('2n+1' if not n.isdigit() else 2 * int(n) + 1)}",
         q_exponent=lambda n: "n\u00b2" if not n.isdigit() else str(int(n) ** 2),
@@ -200,7 +201,7 @@ RANKED_FAMILIES = [
         not_simple=lambda n, q: n == 2 and q == 2,
     ),
     Family(
-        key="C", category=CLASSICAL, ranked=True, min_rank=3,
+        key="C", category=CHEVALLEY, ranked=True, min_rank=3,
         symbol=lambda n: f"C{sub(n)}",
         atlas=lambda n: f"S{sub('2n' if not n.isdigit() else 2 * int(n))}",
         q_exponent=lambda n: "n\u00b2" if not n.isdigit() else str(int(n) ** 2),
@@ -212,7 +213,7 @@ RANKED_FAMILIES = [
         q_exp_value=lambda n: n * n,
     ),
     Family(
-        key="D", category=CLASSICAL, ranked=True, min_rank=4,
+        key="D", category=CHEVALLEY, ranked=True, min_rank=4,
         symbol=lambda n: f"D{sub(n)}",
         atlas=lambda n: f"O{sup('+')}{sub('2n' if not n.isdigit() else 2 * int(n))}",
         q_exponent=lambda n: "n(n" + MINUS + "1)" if not n.isdigit() else str(int(n) * (int(n) - 1)),
@@ -225,7 +226,7 @@ RANKED_FAMILIES = [
         q_exp_value=lambda n: n * (n - 1),
     ),
     Family(
-        key="2D", category=CLASSICAL_TWISTED, ranked=True, min_rank=4,
+        key="2D", category=STEINBERG, ranked=True, min_rank=4,
         symbol=lambda n: f"{sup(2)}D{sub(n)}",
         atlas=lambda n: f"O{sup(MINUS)}{sub('2n' if not n.isdigit() else 2 * int(n))}",
         q_exponent=lambda n: "n(n" + MINUS + "1)" if not n.isdigit() else str(int(n) * (int(n) - 1)),
@@ -271,34 +272,34 @@ def _odd_power_of(p, min_exponent=1):
 
 
 EXCEPTIONAL_FAMILIES = [
-    _fixed("G2", EXCEPTIONAL, f"G{sub(2)}", f"G{sub(2)}", 6,
+    _fixed("G2", CHEVALLEY, f"G{sub(2)}", f"G{sub(2)}", 6,
            [(6, -1, 1), (2, -1, 1)], title="Exceptional G₂",
            not_simple=lambda q: q == 2),
-    _fixed("F4", EXCEPTIONAL, f"F{sub(4)}", f"F{sub(4)}", 24,
+    _fixed("F4", CHEVALLEY, f"F{sub(4)}", f"F{sub(4)}", 24,
            [(12, -1, 1), (8, -1, 1), (6, -1, 1), (2, -1, 1)], title="Exceptional F₄"),
-    _fixed("E6", EXCEPTIONAL, f"E{sub(6)}", f"E{sub(6)}", 36,
+    _fixed("E6", CHEVALLEY, f"E{sub(6)}", f"E{sub(6)}", 36,
            [(12, -1, 1), (9, -1, 1), (8, -1, 1), (6, -1, 1), (5, -1, 1), (2, -1, 1)],
            divisor=lambda q: gcd(3, q - 1),
            divisor_markup=lambda q: _gcd_markup("3", f"{q}{MINUS}1"), title="Exceptional E₆"),
-    _fixed("E7", EXCEPTIONAL, f"E{sub(7)}", f"E{sub(7)}", 63,
+    _fixed("E7", CHEVALLEY, f"E{sub(7)}", f"E{sub(7)}", 63,
            [(18, -1, 1), (14, -1, 1), (12, -1, 1), (10, -1, 1), (8, -1, 1), (6, -1, 1), (2, -1, 1)],
            divisor=lambda q: gcd(2, q - 1),
            divisor_markup=lambda q: _gcd_markup("2", f"{q}{MINUS}1"), title="Exceptional E₇"),
-    _fixed("E8", EXCEPTIONAL, f"E{sub(8)}", f"E{sub(8)}", 120,
+    _fixed("E8", CHEVALLEY, f"E{sub(8)}", f"E{sub(8)}", 120,
            [(30, -1, 1), (24, -1, 1), (20, -1, 1), (18, -1, 1), (14, -1, 1), (12, -1, 1),
             (8, -1, 1), (2, -1, 1)], title="Exceptional E₈"),
-    _fixed("3D4", EXCEPTIONAL_TWISTED, f"{sup(3)}D{sub(4)}", f"{sup(3)}D{sub(4)}", 12,
+    _fixed("3D4", STEINBERG, f"{sup(3)}D{sub(4)}", f"{sup(3)}D{sub(4)}", 12,
            [(12, -1, 1), (4, -1, -1), (6, -1, 1), (2, -1, 1)], title="Triality"),
-    _fixed("2E6", EXCEPTIONAL_TWISTED, f"{sup(2)}E{sub(6)}", f"{sup(2)}E{sub(6)}", 36,
+    _fixed("2E6", STEINBERG, f"{sup(2)}E{sub(6)}", f"{sup(2)}E{sub(6)}", 36,
            [(12, -1, 1), (9, +1, 1), (8, -1, 1), (6, -1, 1), (5, +1, 1), (2, -1, 1)],
            divisor=lambda q: gcd(3, q + 1),
            divisor_markup=lambda q: _gcd_markup("3", f"{q}+1"), title="Twisted E₆"),
-    _fixed("2B2", EXCEPTIONAL_TWISTED, f"{sup(2)}B{sub(2)}", "Sz", 2,
+    _fixed("2B2", SUZUKI_REE, f"{sup(2)}B{sub(2)}", "Sz", 2,
            [(2, +1, 1), (1, -1, 1)], q_allowed=_odd_power_of(2, 3), title="Suzuki"),
-    _fixed("2G2", EXCEPTIONAL_TWISTED, f"{sup(2)}G{sub(2)}", "R", 3,
+    _fixed("2G2", SUZUKI_REE, f"{sup(2)}G{sub(2)}", "R", 3,
            [(3, +1, 1), (1, -1, 1)], q_allowed=_odd_power_of(3), title="Ree (small)",
            not_simple=lambda q: q == 3),
-    _fixed("2F4", EXCEPTIONAL_TWISTED, f"{sup(2)}F{sub(4)}", f"{sup(2)}F{sub(4)}", 12,
+    _fixed("2F4", SUZUKI_REE, f"{sup(2)}F{sub(4)}", f"{sup(2)}F{sub(4)}", 12,
            [(6, +1, 1), (4, -1, 1), (3, +1, 1), (1, -1, 1)], q_allowed=_odd_power_of(2),
            title="Ree (large)", not_simple=lambda q: q == 2),
 ]
@@ -306,8 +307,17 @@ EXCEPTIONAL_FAMILIES = [
 #: rank of the Dynkin diagram of each exceptional family
 EXCEPTIONAL_RANKS = {"G2": 2, "F4": 4, "E6": 6, "E7": 7, "E8": 8,
                      "3D4": 4, "2E6": 6, "2B2": 2, "2G2": 2, "2F4": 4}
+#: the families that exist only for q = p**(2m+1), and their p
+ODD_POWER_FAMILIES = {"2B2": 2, "2G2": 3, "2F4": 2}
+
 for _fam in EXCEPTIONAL_FAMILIES:
     _fam.lie_rank = EXCEPTIONAL_RANKS[_fam.key]
+    _fam.q_form = ODD_POWER_FAMILIES.get(_fam.key)
+
+
+def odd_power_markup(p: int, k: int = 1) -> str:
+    """``(p**(2m+1))**k`` written out as a power of ``p``."""
+    return power(p, f"{2 * k}m+{k}")
 
 LIE_FAMILIES = RANKED_FAMILIES + EXCEPTIONAL_FAMILIES
 FAMILY_BY_KEY = {f.key: f for f in LIE_FAMILIES}
@@ -365,8 +375,17 @@ def lie_order_value(fam: Family, n: int, q: int) -> int:
 def lie_order_formula(fam: Family, n, q) -> str:
     """Order of ``fam`` as a formula, with any concrete value substituted in.
 
-    ``n`` or ``q`` may be ``None``, meaning "generic".
+    ``n`` or ``q`` may be ``None``, meaning "generic".  For Suzuki and Ree the
+    generic order is written in powers of 2 or of 3, since q is not free there.
     """
+    if q is None and fam.q_form is not None:
+        p = fam.q_form
+        body = odd_power_markup(p, fam.q_exp_value(0))
+        for k, sign, mult in sorted(fam.terms(0), key=lambda t: -t[0]):
+            piece = f"({odd_power_markup(p, k)}{'+' if sign > 0 else MINUS}1)"
+            body += (" " if mult > 0 else " / ") + piece
+        return body
+
     q_str = "q" if q is None else str(q)
     n_str = "n" if n is None else str(n)
     body = power(q_str, fam.q_exponent(n_str))
@@ -466,10 +485,13 @@ def _alt_line(parts: list[str], lead: str = "") -> str:
 
 
 def alt_descriptions(fam_key: str, n: int, q: int) -> list[str]:
-    out = list(ALT_DESCRIPTIONS.get((fam_key, n, q), ()))
-    if fam_key == "B" and q % 2 == 0:            # B_n(q) = C_n(q) in characteristic 2
-        out.append(f"C{sub(n)}({q})")
-    return out
+    """Only the one-off coincidences.
+
+    B_n(q) = C_n(q) for every even q is a rule about whole families, not a
+    coincidence about one group; it is stated once, in the key of empty cells,
+    rather than on each of the thirty-odd cells it applies to.
+    """
+    return list(ALT_DESCRIPTIONS.get((fam_key, n, q), ()))
 
 
 def duplicate_of(fam_key: str, n: int, q: int) -> str | None:
@@ -514,6 +536,8 @@ def lie_cell(fam: Family, n, q, show_alt: bool = True) -> Cell | None:
     concrete = n is not None and q is not None
     n_str = "n" if n is None else str(n)
     q_str = "q" if q is None else str(q)
+    if q is None and fam.q_form is not None:
+        q_str = power(fam.q_form, "2m+1")
 
     if q is not None and not fam.q_allowed(q):
         return None
@@ -534,7 +558,7 @@ def lie_cell(fam: Family, n, q, show_alt: bool = True) -> Cell | None:
             # another description, so the top line stays empty
             return Cell(symbol=f"{sup(2)}F{sub(4)}(2)′",
                         order=factorisation_markup(arith.factor(17971200)),
-                        category=EXCEPTIONAL_TWISTED, note="derived subgroup")
+                        category=SUZUKI_REE, note="derived subgroup")
         # a group that is not simple here, or that is isomorphic to one
         # printed elsewhere, leaves the cell empty: see HOLE_KEY
         if (fam.key, rank_key, q) in DERIVED or fam.not_simple(rank_key, q):
@@ -578,33 +602,34 @@ def alternating_cell(n, show_alt: bool = True) -> Cell:
 # sporadic groups
 # --------------------------------------------------------------------------
 
-SPORADIC_GROUPS: list[tuple[str, str, int]] = [
-    ("M<sub>11</sub>", "Mathieu", 7920),
-    ("M<sub>12</sub>", "Mathieu", 95040),
-    ("M<sub>22</sub>", "Mathieu", 443520),
-    ("M<sub>23</sub>", "Mathieu", 10200960),
-    ("M<sub>24</sub>", "Mathieu", 244823040),
-    ("J<sub>1</sub>", "Janko", 175560),
-    ("J<sub>2</sub>", "Hall–Janko", 604800),
-    ("J<sub>3</sub>", "Janko", 50232960),
-    ("J<sub>4</sub>", "Janko", 86775571046077562880),
-    ("HS", "Higman–Sims", 44352000),
-    ("McL", "McLaughlin", 898128000),
-    ("He", "Held", 4030387200),
-    ("Ru", "Rudvalis", 145926144000),
-    ("Suz", "Suzuki", 448345497600),
-    ("O′N", "O’Nan", 460815505920),
-    ("Co<sub>1</sub>", "Conway", 4157776806543360000),
-    ("Co<sub>2</sub>", "Conway", 42305421312000),
-    ("Co<sub>3</sub>", "Conway", 495766656000),
-    ("Fi<sub>22</sub>", "Fischer", 64561751654400),
-    ("Fi<sub>23</sub>", "Fischer", 4089470473293004800),
-    ("Fi<sub>24</sub>′", "Fischer", 1255205709190661721292800),
-    ("HN", "Harada–Norton", 273030912000000),
-    ("Ly", "Lyons", 51765179004000000),
-    ("Th", "Thompson", 90745943887872000),
-    ("B", "Baby Monster", 4154781481226426191177580544000000),
-    ("M", "Monster", 808017424794512875886459904961710757005754368000000000),
+#: symbol, who found it, order, and the series it belongs to
+SPORADIC_GROUPS: list[tuple[str, str, int, str]] = [
+    ("M<sub>11</sub>", "Mathieu", 7920, "Mathieu"),
+    ("M<sub>12</sub>", "Mathieu", 95040, "Mathieu"),
+    ("M<sub>22</sub>", "Mathieu", 443520, "Mathieu"),
+    ("M<sub>23</sub>", "Mathieu", 10200960, "Mathieu"),
+    ("M<sub>24</sub>", "Mathieu", 244823040, "Mathieu"),
+    ("J<sub>1</sub>", "Janko", 175560, "Janko"),
+    ("J<sub>2</sub>", "Hall–Janko", 604800, "Janko"),
+    ("J<sub>3</sub>", "Janko", 50232960, "Janko"),
+    ("J<sub>4</sub>", "Janko", 86775571046077562880, "Janko"),
+    ("HS", "Higman–Sims", 44352000, "HS"),
+    ("McL", "McLaughlin", 898128000, "McL"),
+    ("He", "Held", 4030387200, "He"),
+    ("Ru", "Rudvalis", 145926144000, "Ru"),
+    ("Suz", "Suzuki", 448345497600, "Suz"),
+    ("O′N", "O’Nan", 460815505920, "O′N"),
+    ("Co<sub>1</sub>", "Conway", 4157776806543360000, "Conway"),
+    ("Co<sub>2</sub>", "Conway", 42305421312000, "Conway"),
+    ("Co<sub>3</sub>", "Conway", 495766656000, "Conway"),
+    ("Fi<sub>22</sub>", "Fischer", 64561751654400, "Fischer"),
+    ("Fi<sub>23</sub>", "Fischer", 4089470473293004800, "Fischer"),
+    ("Fi<sub>24</sub>′", "Fischer", 1255205709190661721292800, "Fischer"),
+    ("HN", "Harada–Norton", 273030912000000, "HN"),
+    ("Ly", "Lyons", 51765179004000000, "Ly"),
+    ("Th", "Thompson", 90745943887872000, "Th"),
+    ("B", "Baby Monster", 4154781481226426191177580544000000, "B"),
+    ("M", "Monster", 808017424794512875886459904961710757005754368000000000, "M"),
 ]
 
 
@@ -612,5 +637,20 @@ def sporadic_cells(show_alt: bool = True) -> list[Cell]:
     return [
         Cell(symbol=sym, alt=(name if show_alt else ""),
              order=factorisation_markup(arith.factor(order)), category=SPORADIC)
-        for sym, name, order in SPORADIC_GROUPS
+        for sym, name, order, _series in SPORADIC_GROUPS
     ]
+
+
+def sporadic_series_breaks() -> list[bool]:
+    """Where a gap goes in the sporadic strip.
+
+    ``out[i]`` is True when the group at ``i`` starts a new series and either
+    that series or the one before it has more than one member -- so the
+    Mathieu, Janko, Conway and Fischer runs stand apart, while the one-off
+    groups between them stay in a single run.
+    """
+    names = [s for *_, s in SPORADIC_GROUPS]
+    size = {n: names.count(n) for n in names}
+    return [i > 0 and names[i] != names[i - 1]
+            and (size[names[i]] > 1 or size[names[i - 1]] > 1)
+            for i in range(len(names))]

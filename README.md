@@ -13,11 +13,16 @@ LaTeX or other external toolchain is needed.
 **Each cell** has three lines:
 
 * the top line, flush left, lists **other descriptions of the same group** —
-  only genuine coincidences, such as `A_1(7) ≅ A_2(2)`, never a second
-  notation for the same construction (`A_n(q) = L_{n+1}(q)` is in the key of
-  families instead);
+  only one-off coincidences, such as `A_1(7) ≅ A_2(2)`.  A second notation for
+  the same construction (`A_n(q) = L_{n+1}(q)`) is in the key of families
+  instead, and a rule about whole families (`B_n(q) ≅ C_n(q)` for even `q`) is
+  stated once in the key of empty cells rather than on each of the thirty-odd
+  cells it applies to;
 * the middle line is **the group**;  the three bands have fixed heights, so
-  symbols and rules line up right across a row;
+  symbols and rules line up right across a row, and each band is given room
+  beyond its measured height — a symbol's subscripts reach below the line box
+  reportlab reports and the order's superscripts reach above theirs, so
+  without that margin the two would touch;
 * the bottom line is the **prime factorisation of its order**.  A cell that
   carries a parameter shows the generic order formula instead, and so does a
   cell whose factorisation is too long to print (with the defaults, only
@@ -62,10 +67,15 @@ family that ever appears, so past rank 8 every block is the same six classical
 families; the blocks run to `--rank-max` and are then replaced by an ellipsis,
 the generic-rank block `A_n B_n C_n D_n ²A_n ²D_n`, and a second ellipsis.
 
-**The sporadic groups** get a strip of their own at the bottom.
+**The sporadic groups** get a strip of their own at the bottom, with a small
+gap between series, so the Mathieu, Janko, Conway and Fischer runs stand
+apart.
 
-**Background colour encodes the type** of group (seven categories, see the
-legend on the poster).
+**Background colour encodes the type** of group: cyclic, alternating,
+**Chevalley** (the untwisted groups of Lie type), **Steinberg** (`²A_n`, `²D_n`,
+`³D_4`, `²E_6`), **Suzuki and Ree** (`²B_2`, `²G_2`, `²F_4`), and sporadic.
+The generic cell of a Suzuki or Ree family is written in powers of 2 or of 3
+rather than in `q`, since `q` is not free there.
 
 **No repetitions.**  Every group is printed under its simplest description
 only.  Where a group would appear twice the cell is simply **left empty**, and
@@ -132,9 +142,10 @@ isomorphism.
 
 ### On the colours
 
-The seven category hues are the first seven slots of a colour-vision-validated
-categorical palette, ordered so that every pair of categories that ends up
-side by side on the poster clears the CVD separation gate.  Cells use a 15 %
+The six category hues come from a colour-vision-validated categorical palette,
+chosen so that every pair of categories that ends up side by side on the
+poster clears the CVD separation gate — including `Steinberg` next to
+`Suzuki and Ree`, which meet at `³D_4 | ²F_4` in the rank-4 block.  Cells use a 15 %
 tint of the hue with a saturated accent bar, so that the text on them keeps
 full contrast; identity is never carried by colour alone — every cell is
 labelled and the legend is always present.

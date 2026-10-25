@@ -76,12 +76,11 @@ def missing_glyphs(text: str, font: str = MATH) -> list[str]:
 
 HUES = {
     G.CYCLIC: "#eb6834",
-    G.CLASSICAL: "#2a78d6",
-    G.CLASSICAL_TWISTED: "#1baf7a",
-    G.EXCEPTIONAL: "#6250d6",
-    G.EXCEPTIONAL_TWISTED: "#e87ba4",
+    G.CHEVALLEY: "#2a78d6",
+    G.STEINBERG: "#1baf7a",
+    G.SUZUKI_REE: "#eda100",
     G.ALTERNATING: "#008300",
-    G.SPORADIC: "#eda100",
+    G.SPORADIC: "#6250d6",
 }
 
 INK = HexColor("#121212")
@@ -125,6 +124,7 @@ class PosterConfig:
     cell_h: float = 100.0
     dots_frac: float = 0.42          # width/height of an ellipsis row or column
     gap: float = 3.0                 # gap between neighbouring cells
+    series_gap: float = 22.0         # extra gap between sporadic series
 
     margin: float = 46.0
     axis_w: float = 52.0
@@ -290,7 +290,10 @@ def draw_cell(c, cell: G.Cell, x: float, y: float, w: float, h: float,
     # The three bands have fixed heights, so symbols, rules and order lines
     # all sit at the same height right across a row.
     band_alt = cfg.alt_size * 1.25
-    band_sym = cfg.symbol_size * 1.22
+    # a symbol carries subscripts that reach below the line box reportlab
+    # reports, and the order line above carries superscripts that reach above
+    # it, so both bands are given room beyond their measured height
+    band_sym = cfg.symbol_size * 1.34
     top = y + h - 6.0 - 1.5
     if cell.alt:
         p, _, ph = fitted(cell.alt, MATH, INK_SOFT, inner, band_alt, cfg.alt_size, 4.2,
@@ -300,17 +303,19 @@ def draw_cell(c, cell: G.Cell, x: float, y: float, w: float, h: float,
 
     p_sym, _, sh = fitted(cell.symbol, MATH, INK, inner, band_sym, cfg.symbol_size, 7.0)
     draw_para(c, p_sym, x + pad, top - (band_sym - sh) / 2, inner, sh)
-    top -= band_sym + 3.0
+    top -= band_sym + 4.0
 
     if cell.order:
-        box_h = top - 1.5 - (y + pad)
+        box_h = top - 4.5 - (y + pad)
         text = cell.order
         # a factorisation that will not fit even at the smallest size gives
         # way to the order formula with q substituted in
         if cell.order_alt and not fits_at(text, MATH, inner, box_h, cfg.min_order_size):
             text = cell.order_alt
+        # the floor here is a hard one: the text must never cross into the
+        # symbol above it, so it keeps shrinking past the preferred minimum
         p_ord, _, oh = fitted(text, MATH, INK_SOFT, inner, box_h,
-                              cfg.order_size, cfg.min_order_size)
+                              cfg.order_size, 3.4)
         draw_para(c, p_ord, x + pad, y + pad + (box_h + oh) / 2, inner, oh)
         c.setStrokeColor(tint(hue, 0.45))
         c.setLineWidth(0.4)
@@ -394,8 +399,8 @@ class Poster:
         c.setFont(UI + "-Bold", 10.5)
         c.setFillColor(INK)
         c.drawString(lx, ly + 17, "TYPE")
-        for key in (G.CYCLIC, G.ALTERNATING, G.CLASSICAL, G.CLASSICAL_TWISTED,
-                    G.EXCEPTIONAL, G.EXCEPTIONAL_TWISTED, G.SPORADIC):
+        for key in (G.CYCLIC, G.ALTERNATING, G.CHEVALLEY, G.STEINBERG,
+                    G.SUZUKI_REE, G.SPORADIC):
             hue = HUES[key]
             rounded(c, lx, ly - 4, 28, 16, 3, tint(hue, 0.15), tint(hue, 0.62), 0.7)
             c.setFillColor(HexColor(hue))
@@ -590,11 +595,18 @@ class Poster:
 
         # ---- sporadic strip
         heading(x, "Sporadic groups")
+        breaks = G.sporadic_series_breaks()
+        xx, row, right_edge = x, 0, x
         for k, cell in enumerate(G.sporadic_cells(cfg.show_alt_names)):
-            r, cc = divmod(k, cfg.sporadic_cols)
-            draw_cell(c, cell, x + cc * cfg.cell_w, top - 24 - (r + 1) * cfg.cell_h,
+            if k and k % cfg.sporadic_cols == 0:       # next row of the block
+                row, xx = row + 1, x
+            elif breaks[k]:                            # a new series starts here
+                xx += cfg.series_gap
+            draw_cell(c, cell, xx, top - 24 - (row + 1) * cfg.cell_h,
                       cfg.cell_w - cfg.gap, cfg.cell_h - cfg.gap, cfg)
-        x += min(cfg.sporadic_cols, len(G.SPORADIC_GROUPS)) * cfg.cell_w + 32
+            xx += cfg.cell_w
+            right_edge = max(right_edge, xx)
+        x = right_edge + 32
 
         # ---- the theorem that makes the poster finite
         box_w = 980.0
