@@ -91,7 +91,6 @@ class Cell:
     alt: str = ""                # top line: other descriptions of this group
     category: str = CHEVALLEY
     generic: bool = False        # a parametrised cell (order is a formula)
-    note: str = ""               # small marker, e.g. the prime of a derived subgroup
 
 
 # --------------------------------------------------------------------------
@@ -577,7 +576,7 @@ def lie_cell(fam: Family, n, q, show_alt: bool = True) -> Cell | None:
             # another description, so the top line stays empty
             return Cell(symbol=f"{sup(2)}F{sub(4)}(2)′",
                         order=factorisation_markup(arith.factor(17971200)),
-                        category=SUZUKI_REE, note="derived subgroup")
+                        category=SUZUKI_REE)
         # a group that is not simple here, or that is isomorphic to one
         # printed elsewhere, leaves the cell empty: see HOLE_KEY
         if (fam.key, rank_key, q) in DERIVED or fam.not_simple(rank_key, q):

@@ -323,11 +323,6 @@ def draw_cell(c, cell: G.Cell, x: float, y: float, w: float, h: float,
         c.setLineWidth(0.4)
         c.line(x + pad * 2, top - 0.5, x + w - pad * 2, top - 0.5)
 
-    if cell.note:
-        c.setFont(UI, 4.8)
-        c.setFillColor(INK_FAINT)
-        c.drawRightString(x + w - pad, y + h - 13.0, cell.note)
-
 
 def draw_dots(c, x, y, w, h, vertical: bool) -> None:
     c.setFillColor(INK_FAINT)
