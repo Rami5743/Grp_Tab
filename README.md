@@ -59,11 +59,12 @@ rows whose `q` is prime.
 group of rank 1, then of rank 2, and so on:
 
 ```
-A_1 | A_2 B_2 ²A_2 G_2 ²B_2 ²G_2 | A_3 B_3 C_3 ²A_3 | A_4 B_4 C_4 D_4 ²A_4 ²D_4 F_4 ³D_4 ²F_4 | …
+A_1 | A_2 B_2 G_2 ²A_2 ²B_2 ²G_2 | A_3 B_3 C_3 ²A_3 | A_4 B_4 C_4 D_4 F_4 ²A_4 ²D_4 ³D_4 ²F_4 | …
 ```
 
-Inside a block the order is `A, B, C, D, ²A, ²D`, then the exceptional
-families of that rank.  A family starts at the rank below which it would
+Inside a block the families run through the three types in turn: the Chevalley
+groups `A, B, C, D` and the exceptional ones of that rank, then the Steinberg
+groups `²A, ²D, ³D_4, ²E_6`, then Suzuki and Ree.  A family starts at the rank below which it would
 duplicate another one (`B_1 = A_1`, `C_2 = B_2`, `D_3 = A_3`, `²D_3 = ²A_3`),
 which is why rank 2 has no `C_2` and rank 3 no `D_3`.  `E_8` is the last
 family that ever appears, so past rank 8 every block is the same six classical

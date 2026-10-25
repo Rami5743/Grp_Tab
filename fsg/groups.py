@@ -341,10 +341,12 @@ FAMILY_BY_KEY["3D4"].display_factors = lambda q: [
     f"({power(q, 2)}{MINUS}1)",
 ]
 
-#: order of the families inside one rank block: untwisted classical, twisted
-#: classical, untwisted exceptional, twisted exceptional
-FAMILY_ORDER = ["A", "B", "C", "D", "2A", "2D",
-                "G2", "F4", "E6", "E7", "E8", "3D4", "2E6", "2B2", "2G2", "2F4"]
+#: order of the families inside one rank block: the Chevalley groups first,
+#: then the Steinberg groups, then Suzuki and Ree -- so each block runs
+#: through the three types in turn
+FAMILY_ORDER = ["A", "B", "C", "D", "G2", "F4", "E6", "E7", "E8",
+                "2A", "2D", "3D4", "2E6",
+                "2B2", "2G2", "2F4"]
 
 RANKED_ORDER = [k for k in FAMILY_ORDER if FAMILY_BY_KEY[k].ranked]
 
