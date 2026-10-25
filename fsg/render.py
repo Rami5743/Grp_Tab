@@ -568,9 +568,14 @@ class Poster:
         "\u2022  E<sub>8</sub> is the last family to appear, so from rank 9 onwards every "
         "block is the same six classical families \u2014 hence the ellipsis.",
         "\u2022  Row q = 1:  over \u201cthe field with one element\u201d a group of Lie type "
-        "degenerates to its Weyl group, and the cell A<sub>n</sub>(1) holds the alternating "
-        "group A<sub>n+1</sub>.  Only type A is simple there, so that row is exactly the "
-        "alternating groups.",
+        "degenerates to its Weyl group \u2014 for type A<sub>n</sub> the symmetric group "
+        "S<sub>n+1</sub> \u2014 whose simple part is A<sub>n+1</sub>, just as the simple part "
+        "of GL<sub>n+1</sub>(q) is A<sub>n</sub>(q) = L<sub>n+1</sub>(q).  Only type A is "
+        "simple there, so that row is exactly the alternating groups.",
+        "\u2022  \u201cA<sub>n</sub>(1)\u201d is a position on this table, not a received "
+        "notation:  there is no field with one element, and the q \u2192 1 limit is a "
+        "heuristic of Tits\u2019.  Each group in that row is printed under its own name, "
+        "A<sub>n+1</sub>.",
         "\u2022  A cell carrying a parameter shows the generic order formula in place of a "
         "prime factorisation, and so does a cell whose factorisation is too long to print.",
         "\u2022  C<sub>n</sub>(q) \u2245 B<sub>n</sub>(q) for q even, so only the odd-q cells "

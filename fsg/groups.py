@@ -541,10 +541,14 @@ def f1_cell(n, show_alt: bool = True) -> Cell | None:
     """The cell of ``A_n(1)``.
 
     Over "the field with one element" a group of Lie type degenerates to its
-    Weyl group, and the cell A_n(1) holds the alternating group A_(n+1).  Of
-    all the Weyl groups only those of type A give a simple group, so this is
-    the whole q = 1 row -- and it is where the alternating groups live.  The
-    group is named A_(n+1);  "A_n(1)" is only its address on the poster.
+    Weyl group -- for type A_n that is the symmetric group S_(n+1) -- and the
+    simple part of S_(n+1) is the alternating group A_(n+1), just as the simple
+    part of GL_(n+1)(q) is A_n(q) = PSL_(n+1)(q).  No other Weyl group has a
+    simple part that is new here, so this is the whole q = 1 row.
+
+    None of this is received notation:  there is no field with one element,
+    and q -> 1 is a heuristic of Tits'.  "A_n(1)" is an address on the poster,
+    never printed as a name -- the group is printed as A_(n+1).
     """
     if n is None:
         return Cell(symbol=f"A{sub('n+1')}", order="(n+1)! / 2",

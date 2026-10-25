@@ -42,10 +42,15 @@ then a generic `q` row.  Wherever prime powers are skipped the axis carries an
 ellipsis.
 
 * **`q = 1` is the alternating groups.**  Over "the field with one element" a
-  group of Lie type degenerates to its Weyl group, so the cell `A_n(1)` holds
-  `A_{n+1}`.  Only type A is simple there, which is why the rest of that row
-  is empty.  `A_n(1)` is an address, not a name: the group is printed as
-  `A_{n+1}`.
+  group of Lie type degenerates to its Weyl group — for type `A_n` that is the
+  symmetric group `S_{n+1}` — and the simple part of `S_{n+1}` is `A_{n+1}`,
+  just as the simple part of `GL_{n+1}(q)` is `A_n(q) = PSL_{n+1}(q)`.  No
+  other Weyl group contributes anything new, which is why the rest of that row
+  is empty.
+
+  None of this is received notation: there is no field with one element, and
+  `q → 1` is a heuristic of Tits'.  `A_n(1)` is an address on the table, never
+  printed as a name — the group is printed as `A_{n+1}`.
 * **`--extra-q`** adds rows past `--q-max`.  It is empty by default; setting
   it to `243`, say, gives the `²G_2` column a second group, since the Suzuki
   and Ree families exist only for `q = 2^(2m+1)` and `q = 3^(2m+1)`.  Their
