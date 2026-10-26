@@ -531,7 +531,7 @@ class Poster:
             else:
                 pr, e = prime_power(row.q)
                 label = G.power(pr, e)
-                note = str(row.q) if e > 1 else "prime"
+                note = str(row.q) if e > 1 else ""
             p, _, ph = fitted(label, MATH + "-Bold", INK, cfg.axis_w - 8, row.height,
                               17.0, 9.0)
             draw_para(c, p, x + 4, y + (row.height + ph) / 2, cfg.axis_w - 8, ph)
@@ -539,11 +539,6 @@ class Poster:
                 continue
             p2, _, ph2 = fitted(note, MATH, INK_FAINT, cfg.axis_w - 6, 12, 7.0, 5.0)
             draw_para(c, p2, x + 3, y + (row.height - ph) / 2 - 1, cfg.axis_w - 6, ph2)
-
-        c.setFillColor(INK_SOFT)
-        c.setFont(UI + "-Bold", 11)
-        c.drawString(cfg.margin + 12, self.row_y(len(self.rows) - 1) - 16,
-                     "q  =  size of the field")
 
     # ...................................................................
     def _draw_grid(self, c) -> None:
