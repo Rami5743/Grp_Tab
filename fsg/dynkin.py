@@ -81,8 +81,16 @@ def diagram(key: str, n) -> Diagram | None:
         return d
 
     if key in ("B", "C"):
+        arrow = +1 if key == "B" else -1
+        if k is None:
+            # the double bond joins the last two nodes, so both of them have
+            # to be drawn:  o - o - ... - o = o,  not  o - o - ... = o
+            nodes = [(0, 0.0, NODE), (1, 0.0, NODE), (2, 0.0, ELLIPSIS),
+                     (3, 0.0, NODE), (4, 0.0, NODE)]
+            bonds = [(0, 1, 1, 0), (1, 2, 1, 0), (2, 3, 1, 0), (3, 4, 2, arrow)]
+            return Diagram(nodes, bonds)
         nodes = _spine(k)
-        return Diagram(nodes, _spine_bonds(len(nodes), 2, +1 if key == "B" else -1))
+        return Diagram(nodes, _spine_bonds(len(nodes), 2, arrow))
 
     if key in ("D", "2D"):
         nodes, bonds = _fork(k)
