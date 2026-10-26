@@ -148,7 +148,7 @@ class PosterConfig:
     #: from the longest diagram, and the band shares the top of the page with
     #: the masthead, which only occupies the left of it
     dynkin_pad: float = 14.0
-    title_h: float = 214.0           # height of the masthead text
+    title_h: float = 252.0           # height of the masthead text
     bottom_gap: float = 40.0
 
     show_alt_names: bool = True
@@ -397,7 +397,7 @@ class Poster:
 
     def masthead_width(self) -> float:
         """How far right the lower row of the masthead reaches."""
-        return (self.cfg.cell_w + 6) * 2 + 215 + 258 + 4 * (190 + 16) + 40
+        return (self.cfg.cell_w - self.cfg.gap) * 2 + 215 + 258 + 4 * (190 + 16) + 40
 
     def _diagram_length(self, col: Column) -> float:
         if col.family is None:
@@ -475,7 +475,8 @@ class Poster:
 
         # ---- lower row of the masthead
         hy = top - 118                       # baseline of the small headings
-        dw, dh = cfg.cell_w + 6, 66.0
+        # the sample is a real cell at its real size, not a scaled-down one
+        dw, dh = cfg.cell_w - cfg.gap, cfg.cell_h - cfg.gap
         cell_top = hy - 12
         x = x0
 
@@ -494,9 +495,9 @@ class Poster:
         heading(x, "HOW TO READ A CELL")
         demo = G.lie_cell(G.FAMILY_BY_KEY["A"], 1, 7, cfg.show_alt_names)
         draw_cell(c, demo, x, cell_top - dh, dw, dh, cfg)
-        for yy, text in [(cell_top - 8, "other descriptions of the same group"),
-                         (cell_top - dh * 0.5, "the group"),
-                         (cell_top - dh + 11, "prime factorisation of its order")]:
+        for yy, text in [(cell_top - 10, "other descriptions of the same group"),
+                         (cell_top - 36, "the group"),
+                         (cell_top - dh + 22, "prime factorisation of its order")]:
             c.setStrokeColor(INK_FAINT)
             c.setLineWidth(0.5)
             c.line(x + dw + 3, yy, x + dw + 14, yy)

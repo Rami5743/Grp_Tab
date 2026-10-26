@@ -229,8 +229,10 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
         rj = r if dia.nodes[j][2] is NODE else 5.0
         x0, y0 = xi + ux * ri, yi + uy * ri
         x1, y1 = xj - ux * rj, yj - uy * rj
+        # the same spacing for every multiple bond, whichever way its arrow
+        # points -- wide enough that two lines read as two
         offs = [0.0] if mult == 1 else (
-            [-1.1, 1.1] if mult == 2 else [-1.9, 0.0, 1.9])
+            [-1.7, 1.7] if mult == 2 else [-3.0, 0.0, 3.0])
         for o in offs:
             c.line(x0 + px * o, y0 + py * o, x1 + px * o, y1 + py * o)
         if arrow:
@@ -240,8 +242,11 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
             c.setLineWidth(1.0)
             c.setLineJoin(1)
             c.setLineCap(1)
-            _chevron(c, mx + ux * s * 3.4, my + uy * s * 3.4, ux * s, uy * s,
-                     max(4.2, unit * 0.24))
+            ah = max(4.2, unit * 0.24)
+            # the chevron straddles the middle of the bond, so B_n and C_n
+            # differ only in which way it points
+            _chevron(c, mx + ux * s * ah * 0.5, my + uy * s * ah * 0.5,
+                     ux * s, uy * s, ah)
             c.restoreState()
 
     # ---- nodes
@@ -263,7 +268,7 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
     c.setStrokeColor(twist_ink)
     c.setFillColor(twist_ink)
     c.setLineWidth(1.0)
-    c.setLineCap(1)
+    c.setLineCap(0)
 
     if dia.cycle is not None:
         # triality: three arcs of one circle about the branch node, each
@@ -274,13 +279,15 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
         rad = sum(math.hypot(px - ox, py - oy) for px, py in pts) / 3 + r + 3.0
         order = sorted(range(3), key=lambda t: angs[t])
         ah = max(3.6, unit * 0.2)
+        # the stroke stops short of the head, by the length of the head
+        back = math.degrees(ah * 0.95 / rad)
         for t in range(3):
             a0 = angs[order[t]]
             a1 = angs[order[(t + 1) % 3]]
             extent = (a1 - a0) % 360
             pad = 16.0
             c.arc(ox - rad, oy - rad, ox + rad, oy + rad,
-                  a0 + pad, extent - 2 * pad)
+                  a0 + pad, extent - 2 * pad - back)
             a = math.radians(a1 - pad)
             _arrowhead(c, ox + rad * math.cos(a), oy + rad * math.sin(a),
                        -math.sin(a), math.cos(a), ah)
@@ -315,12 +322,16 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
         for i, j in over:
             a = abs(pos(i)[0] - pos(j)[0]) / 2
             b = max(arc * a / a_max, r + 3.0)
-            c.arc(ctr - a, base - b, ctr + a, base + b, start, ang)
-            # the head sits on the end of the arc and points along its
-            # tangent, so that no stroke shows past it
+            ah = max(3.4, unit * 0.19)
+            # the heads sit on the two ends of the arc and point along its
+            # tangent there;  the stroke itself stops a head short of each
+            # end, so none of it can show past them
+            back = math.degrees(ah * 0.95 / max(a, b))
+            c.arc(ctr - a, base - b, ctr + a, base + b,
+                  start + back, ang - 2 * back)
             for th, sign in ((math.radians(start), -1.0),
                              (math.radians(start + ang), +1.0)):
                 ex, ey = ctr + a * math.cos(th), base + b * math.sin(th)
                 _arrowhead(c, ex, ey, sign * -a * math.sin(th),
-                           sign * b * math.cos(th), max(3.4, unit * 0.19))
+                           sign * b * math.cos(th), ah)
     c.restoreState()
