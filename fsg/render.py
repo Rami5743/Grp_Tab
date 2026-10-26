@@ -144,7 +144,8 @@ class PosterConfig:
     axis_w: float = 52.0
     header_h: float = 26.0           # per-column header band
     block_band_h: float = 30.0       # the band naming each rank block
-    dynkin_h: float = 46.0           # the band of Dynkin diagrams
+    dynkin_h: float = 142.0          # the band of Dynkin diagrams, drawn
+                                     # on their side so they can run long
     title_h: float = 224.0
     bottom_gap: float = 40.0
 
@@ -510,9 +511,12 @@ class Poster:
     def _draw_headers(self, c) -> None:
         cfg = self.cfg
         band_top = self.height - cfg.margin - cfg.title_h
-        band_y = band_top - cfg.block_band_h
-        dyn_y = band_y - cfg.dynkin_h
-        hdr_y = dyn_y - cfg.header_h
+        # the diagrams sit above the band naming the rank, turned on their
+        # side, so a long one is limited by the height of the band and not by
+        # the width of its column
+        dyn_y = band_top - cfg.dynkin_h
+        band_y = dyn_y - cfg.block_band_h
+        hdr_y = band_y - cfg.header_h
 
         for i, col in enumerate(self.cols):
             if col.block_title:
@@ -533,8 +537,12 @@ class Poster:
                     dia = dynkin.diagram(col.family.key,
                                          col.rank if col.family.ranked else None)
                     if dia is not None:
-                        dynkin.draw(c, dia, x, dyn_y + 3, col.width, cfg.dynkin_h - 6,
-                                    INK, HexColor(cfg.twist_hue))
+                        c.saveState()
+                        c.translate(x, dyn_y + cfg.dynkin_h)
+                        c.rotate(-90)
+                        dynkin.draw(c, dia, 3, 0, cfg.dynkin_h - 6, col.width,
+                                    INK, HexColor(cfg.twist_hue), x_align=1.0)
+                        c.restoreState()
 
     # ...................................................................
     def _draw_axis(self, c) -> None:

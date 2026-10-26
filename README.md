@@ -83,10 +83,19 @@ family that ever appears, so past rank 8 every block is the same six classical
 families; the blocks run to `--rank-max` and are then replaced by an ellipsis,
 the generic-rank block `A_n B_n C_n D_n ²A_n ²D_n`, and a second ellipsis.
 
-**Above every column is its Dynkin diagram.**  On the Steinberg, Suzuki and
-Ree columns a red arrow (or, for `³D_4`, a turn of order three about the
-branch node) marks the automorphism of the diagram that their Frobenius twist
-uses.  A generic-rank column carries the diagram with an ellipsis in it.
+**Above every column is its Dynkin diagram**, turned on its side and hung from
+the band that names the rank, so that a long diagram is limited by the height
+of the band rather than by the width of its column, and diagrams of different
+lengths line up along one edge.  A generic-rank column carries the diagram
+with an ellipsis in it.
+
+On the Steinberg, Suzuki and Ree columns red arrows mark the automorphism of
+the diagram that their Frobenius twist uses.  Each exchanged pair gets a half
+ellipse, and all of them share one centre — they are exchanged by the same
+reflection — so the arcs nest instead of crossing.  On `²E_6` they are drawn
+on the side away from the branch node.  `³D_4` is the one case that is not an
+involution, and it gets three arrows, each carrying one outer node to the
+next.
 
 **The sporadic groups** get a strip of their own at the bottom, with a small
 gap between series, so the Mathieu, Janko, Conway and Fischer runs stand
