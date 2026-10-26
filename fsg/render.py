@@ -153,7 +153,7 @@ class PosterConfig:
 
     show_alt_names: bool = True
     #: print every prime factorisation, however small it has to be set
-    always_factorise: bool = False
+    always_factorise: bool = True
     max_order_lines: int = 7
     symbol_size: float = 20.0
     alt_size: float = 7.4
@@ -326,7 +326,9 @@ def draw_cell(c, cell: G.Cell, x: float, y: float, w: float, h: float,
     # a symbol carries subscripts that reach below the line box reportlab
     # reports, and the order line above carries superscripts that reach above
     # it, so both bands are given room beyond their measured height
-    band_sym = cfg.symbol_size * 1.45
+    # a subscript drops about 0.6 em below the line box reportlab reports, so
+    # the band has to be a good deal taller than the measured height
+    band_sym = cfg.symbol_size * 1.72
     top = y + h - 6.0 - 1.5
     if cell.alt:
         p, _, ph = fitted(cell.alt, MATH, INK_SOFT, inner, band_alt, cfg.alt_size, 4.2,

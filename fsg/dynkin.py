@@ -130,6 +130,17 @@ def _edge(x, y, tx, ty, d):
     return x + dx / n * d, y + dy / n * d
 
 
+def _chevron(c, x, y, dx, dy, size):
+    """An open "V" pointing along ``(dx, dy)``, drawn wider than it is long so
+    that it reads across a double or triple bond."""
+    n = math.hypot(dx, dy) or 1.0
+    dx, dy = dx / n, dy / n
+    px, py = -dy, dx
+    wide = size * 0.95
+    c.line(x - dx * size + px * wide, y - dy * size + py * wide, x, y)
+    c.line(x - dx * size - px * wide, y - dy * size - py * wide, x, y)
+
+
 def _arrowhead(c, x, y, dx, dy, size):
     n = math.hypot(dx, dy) or 1.0
     dx, dy = dx / n, dy / n
@@ -225,8 +236,13 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
         if arrow:
             mx, my = (x0 + x1) / 2, (y0 + y1) / 2
             s = 1 if arrow > 0 else -1
-            _arrowhead(c, mx + ux * s * 2.6, my + uy * s * 2.6, ux * s, uy * s,
-                       max(3.4, unit * 0.19))
+            c.saveState()
+            c.setLineWidth(1.0)
+            c.setLineJoin(1)
+            c.setLineCap(1)
+            _chevron(c, mx + ux * s * 3.4, my + uy * s * 3.4, ux * s, uy * s,
+                     max(4.2, unit * 0.24))
+            c.restoreState()
 
     # ---- nodes
     for i, (_, _, kind) in enumerate(dia.nodes):
@@ -285,8 +301,8 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
         p.moveTo(xi + r + 2.0, yi)
         p.curveTo(mid, yi, mid, yj, xj + r + 2.0, yj)
         c.drawPath(p, stroke=1, fill=0)
-        _arrowhead(c, xi + r + 2.0, yi, -1, -0.4, ah)
-        _arrowhead(c, xj + r + 2.0, yj, -1, 0.4, ah)
+        _arrowhead(c, xi + r + 2.0, yi, -1, 0, ah)
+        _arrowhead(c, xj + r + 2.0, yj, -1, 0, ah)
 
     if over:
         # concentric half ellipses: every pair is exchanged by the same
@@ -300,8 +316,11 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
             a = abs(pos(i)[0] - pos(j)[0]) / 2
             b = max(arc * a / a_max, r + 3.0)
             c.arc(ctr - a, base - b, ctr + a, base + b, start, ang)
-            for sgn in (-1, 1):
-                ex, ey = ctr + sgn * a * ca, base + side * b * sa
-                nx, ny = ctr + sgn * a, base
-                _arrowhead(c, ex, ey, nx - ex, ny - ey, max(3.4, unit * 0.19))
+            # the head sits on the end of the arc and points along its
+            # tangent, so that no stroke shows past it
+            for th, sign in ((math.radians(start), -1.0),
+                             (math.radians(start + ang), +1.0)):
+                ex, ey = ctr + a * math.cos(th), base + b * math.sin(th)
+                _arrowhead(c, ex, ey, sign * -a * math.sin(th),
+                           sign * b * math.cos(th), max(3.4, unit * 0.19))
     c.restoreState()

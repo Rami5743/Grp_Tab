@@ -26,10 +26,10 @@ LaTeX or other external toolchain is needed.
   its band so that all the slack falls below it;
 * the bottom line is the **prime factorisation of its order**.  A cell that
   carries a parameter shows the generic order formula instead, and so does a
-  cell whose factorisation is too long to print — with the defaults that is
-  six cells out of 1060, `E_8(q)` for `q = 23, 25, 27, 29, 31, 32`.  Pass
-  `--always-factorise` and those six are printed in full as well, down to
-  4.4 pt;  `out/finite_simple_groups_full_factorisations.pdf` is that version.  Each of the three lines is set as large as its own box
+  cell whose factorisation would not fit — but by default none is given up on:
+  the order line is set as small as it must be, down to 4.1 pt for `E_8(2^5)`,
+  the worst of them.  `--formula-if-too-long` prints the order formula in those
+  six `E_8` cells instead.  Each of the three lines is set as large as its own box
   allows, so the order line grows up to its cap wherever the factorisation is
   short.
 
@@ -119,8 +119,6 @@ entry in that key means the group is not defined there, or is not simple.
 
 ```bash
 python3 make_poster.py --out out/finite_simple_groups.pdf
-python3 make_poster.py --always-factorise \
-        --out out/finite_simple_groups_full_factorisations.pdf
 python3 make_poster.py --help          # every parameter
 python3 selftest.py                    # check the mathematical content
 ```
@@ -140,7 +138,7 @@ the ones used for `out/finite_simple_groups.pdf`:
 | `--dots-frac` | 0.42 | size of an ellipsis row/column, relative to a cell |
 | `--symbol-size`, `--order-size` | 20, 14 | font size caps;  each line is set as large as its box allows |
 | `--max-order-lines` | 7 | lines the order line may wrap onto |
-| `--always-factorise` | off | print every factorisation, however small it must be set |
+| `--formula-if-too-long` | off | where a factorisation will not fit at a readable size, print the order formula instead |
 | `--no-alt-names` | off | drop the top line of every cell |
 | `--title`, `--subtitle` | | the masthead text |
 
