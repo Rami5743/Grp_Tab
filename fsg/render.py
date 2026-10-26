@@ -13,6 +13,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas as pdfcanvas
 from reportlab.platypus import Paragraph
 
+from . import dynkin
 from . import groups as G
 
 # --------------------------------------------------------------------------
@@ -36,6 +37,17 @@ def _find(name: str) -> str | None:
     return None
 
 
+def _tune_scripts(fraction: float = 0.42) -> None:
+    """How far reportlab raises a superscript and drops a subscript.
+
+    Its default, half the font size, puts an exponent high enough to reach
+    into the line above and a subscript low enough to reach the rule below.
+    """
+    import reportlab.platypus.paraparser as paraparser
+    paraparser.supFraction = fraction
+    paraparser.subFraction = fraction
+
+
 def register_fonts() -> None:
     """Register a Unicode serif (maths) and a Unicode sans (labels).
 
@@ -48,6 +60,7 @@ def register_fonts() -> None:
         UI: ("DejaVuSans.ttf", "DejaVuSans-Bold.ttf", "DejaVuSans.ttf",
              "DejaVuSans-Bold.ttf"),
     }
+    _tune_scripts()
     for base, (reg, bold, ital, bi) in faces.items():
         for suffix, fname in (("", reg), ("-Bold", bold), ("-Italic", ital),
                               ("-BoldItalic", bi)):
@@ -131,6 +144,7 @@ class PosterConfig:
     axis_w: float = 52.0
     header_h: float = 26.0           # per-column header band
     block_band_h: float = 30.0       # the band naming each rank block
+    dynkin_h: float = 46.0           # the band of Dynkin diagrams
     title_h: float = 224.0
     bottom_gap: float = 40.0
 
@@ -144,7 +158,10 @@ class PosterConfig:
     min_order_size: float = 5.0
     #: line spacing of the order line, as a multiple of its font size;  maths
     #: full of superscripts needs more than running text does
-    order_leading: float = 1.34
+    order_leading: float = 1.48
+
+    #: colour of the diagram automorphism drawn on the twisted columns
+    twist_hue: str = "#e34948"
 
     title: str = "A Periodic Table of the Finite Simple Groups"
     subtitle: str = ("Every finite simple group appears exactly once, in its simplest form.  "
@@ -355,7 +372,7 @@ class Poster:
         self.grid_h = sum(row.height for row in self.rows)
         self.bottom_h = self._bottom_height()
         self.width = cfg.margin * 2 + cfg.axis_w + self.grid_w
-        self.height = (cfg.margin * 2 + cfg.title_h + cfg.block_band_h + cfg.header_h
+        self.height = (cfg.margin * 2 + cfg.title_h + cfg.block_band_h + cfg.dynkin_h + cfg.header_h
                        + self.grid_h + cfg.bottom_gap + self.bottom_h)
 
     # -- geometry ---------------------------------------------------------
@@ -364,8 +381,8 @@ class Poster:
 
     def row_y(self, j: int) -> float:
         """Bottom edge of row ``j``."""
-        top = self.height - self.cfg.margin - self.cfg.title_h - self.cfg.block_band_h \
-            - self.cfg.header_h
+        top = (self.height - self.cfg.margin - self.cfg.title_h
+               - self.cfg.block_band_h - self.cfg.dynkin_h - self.cfg.header_h)
         return top - sum(r.height for r in self.rows[:j + 1])
 
     def _bottom_height(self) -> float:
@@ -494,7 +511,8 @@ class Poster:
         cfg = self.cfg
         band_top = self.height - cfg.margin - cfg.title_h
         band_y = band_top - cfg.block_band_h
-        hdr_y = band_y - cfg.header_h
+        dyn_y = band_y - cfg.dynkin_h
+        hdr_y = dyn_y - cfg.header_h
 
         for i, col in enumerate(self.cols):
             if col.block_title:
@@ -511,6 +529,12 @@ class Poster:
                 p, _, ph = fitted(col.header, MATH, INK_SOFT, col.width - 6,
                                   cfg.header_h - 6, 12.0, 6.0)
                 draw_para(c, p, x + 3, hdr_y + (cfg.header_h + ph) / 2, col.width - 6, ph)
+                if col.family is not None:
+                    dia = dynkin.diagram(col.family.key,
+                                         col.rank if col.family.ranked else None)
+                    if dia is not None:
+                        dynkin.draw(c, dia, x, dyn_y + 3, col.width, cfg.dynkin_h - 6,
+                                    INK, HexColor(cfg.twist_hue))
 
     # ...................................................................
     def _draw_axis(self, c) -> None:
@@ -586,6 +610,10 @@ class Poster:
         "the Tits group \u2014 is, and is printed in that cell.",
         "\u2022  The 26 sporadic groups belong to no family of Lie type;  they are shown in "
         "their own strip.",
+        "\u2022  Above each column is the Dynkin diagram of its family.  On the Steinberg, "
+        "Suzuki and Ree columns the red arrows are the automorphism of the diagram that "
+        "the Frobenius twist uses \u2014 for <super>3</super>D<sub>4</sub> a turn of order "
+        "three about the branch node.",
         "\u2022  A symbol with a subscript and no field is a group over \u201cF<sub>1</sub>\u201d:  "
         "C<sub>p</sub> is cyclic of order p and A<sub>m</sub> is alternating of degree m.  With a "
         "field, A<sub>n</sub>(q) is linear and C<sub>n</sub>(q) symplectic \u2014 the argument "

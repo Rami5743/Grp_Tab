@@ -26,8 +26,8 @@ LaTeX or other external toolchain is needed.
   its band so that all the slack falls below it;
 * the bottom line is the **prime factorisation of its order**.  A cell that
   carries a parameter shows the generic order formula instead, and so does a
-  cell whose factorisation is too long to print (with the defaults, only
-  `E_8(243)`).  Each of the three lines is set as large as its own box
+  cell whose factorisation is too long to print — with the defaults that is
+  six cells out of 1060, `E_8(q)` for `q = 23, 25, 27, 29, 31, 32`.  Each of the three lines is set as large as its own box
   allows, so the order line grows up to its cap wherever the factorisation is
   short.
 
@@ -83,6 +83,11 @@ family that ever appears, so past rank 8 every block is the same six classical
 families; the blocks run to `--rank-max` and are then replaced by an ellipsis,
 the generic-rank block `A_n B_n C_n D_n ²A_n ²D_n`, and a second ellipsis.
 
+**Above every column is its Dynkin diagram.**  On the Steinberg, Suzuki and
+Ree columns a red arrow (or, for `³D_4`, a turn of order three about the
+branch node) marks the automorphism of the diagram that their Frobenius twist
+uses.  A generic-rank column carries the diagram with an ellipsis in it.
+
 **The sporadic groups** get a strip of their own at the bottom, with a small
 gap between series, so the Mathieu, Janko, Conway and Fischer runs stand
 apart.
@@ -133,6 +138,7 @@ The page size is computed from the grid, so changing `--rank-max` or
 |---|---|
 | `fsg/arith.py` | primality, Pollard-rho factorisation, and the cyclotomic splitting `q^k − 1 = ∏_{e\|k} Φ_e(q)` that makes the big orders factor instantly |
 | `fsg/groups.py` | the families, their order formulas, the rank blocks, the coincidences, the 26 sporadic groups; produces one `Cell` per box |
+| `fsg/dynkin.py` | the Dynkin diagrams and the twist arrows drawn above the columns |
 | `fsg/render.py` | the grid model and all drawing |
 | `make_poster.py` | command-line front end |
 | `selftest.py` | orders checked against published values, and a check that no group is printed twice |
@@ -152,7 +158,9 @@ an order is *computed* from would print badly, the family supplies the closed
 form instead: `³D_4(q)` is computed through `(q^12 − 1)/(q^4 − 1)`, which
 factors cyclotomically, but prints as `q^12 (q^8 + q^4 + 1) (q^6 − 1) (q^2 − 1)`.
 Order lines are set with looser leading than running text, since they are full
-of superscripts.
+of superscripts;  reportlab raises a superscript by half the font size by
+default, which is enough to reach the line above, so the generator lowers that
+to 0.42 as well.
 
 ### On the "no repetitions" rule
 
