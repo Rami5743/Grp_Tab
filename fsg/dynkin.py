@@ -142,6 +142,20 @@ def _arrowhead(c, x, y, dx, dy, size):
     c.drawPath(p, stroke=0, fill=1)
 
 
+def length(dia: Diagram, w: float, h: float) -> float:
+    """How much of the spine direction ``dia`` takes up in a box ``w`` long."""
+    xs = [p[0] for p in dia.nodes]
+    span_x = max(max(xs) - min(xs), 1)
+    r = 3.4
+    unit = max(min((w - 12) / span_x, 24.0), 2.4 * r)
+    tail = unit if any(abs(dia.nodes[i][0] - dia.nodes[j][0]) < 0.5
+                       for i, j in dia.swaps) else 0.0
+    head = unit * 1.05 if dia.cycle is not None else 0.0
+    if dia.cycle is not None:
+        tail = head
+    return (max(xs) - min(xs)) * unit + 2 * r + head + tail
+
+
 def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
          ink, twist_ink, x_align: float = 0.5) -> None:
     """Draw ``dia`` in the box ``(x, y, w, h)``.
@@ -153,7 +167,7 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
     xs = [p[0] for p in dia.nodes]
     ys = [p[1] for p in dia.nodes]
     span_x = max(max(xs) - min(xs), 1)
-    r = 2.7                              # the node is the same size everywhere
+    r = 3.4                              # the node is the same size everywhere
 
     # how far above the spine the twist arcs reach, in diagram units
     spans = [abs(dia.nodes[i][0] - dia.nodes[j][0]) for i, j in dia.swaps]
@@ -167,7 +181,7 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
     else:
         hi_u, lo_u = max(ys), min(ys) - rise_u
 
-    unit = min((w - 12) / span_x, 16.0)
+    unit = min((w - 12) / span_x, 24.0)
     if hi_u > lo_u:
         unit = min(unit, (h - 2 * r - 4) / (hi_u - lo_u))
     unit = max(unit, 2.4 * r)
@@ -192,7 +206,7 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
     c.saveState()
     c.setStrokeColor(ink)
     c.setFillColor(ink)
-    c.setLineWidth(0.7)
+    c.setLineWidth(0.9)
     for i, j, mult, arrow in dia.bonds:
         (xi, yi), (xj, yj) = pos(i), pos(j)
         dx, dy = xj - xi, yj - yi
@@ -205,21 +219,22 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
         x0, y0 = xi + ux * ri, yi + uy * ri
         x1, y1 = xj - ux * rj, yj - uy * rj
         offs = [0.0] if mult == 1 else (
-            [-0.85, 0.85] if mult == 2 else [-1.5, 0.0, 1.5])
+            [-1.1, 1.1] if mult == 2 else [-1.9, 0.0, 1.9])
         for o in offs:
             c.line(x0 + px * o, y0 + py * o, x1 + px * o, y1 + py * o)
         if arrow:
             mx, my = (x0 + x1) / 2, (y0 + y1) / 2
             s = 1 if arrow > 0 else -1
-            _arrowhead(c, mx + ux * s * 2.2, my + uy * s * 2.2, ux * s, uy * s, 3.2)
+            _arrowhead(c, mx + ux * s * 2.6, my + uy * s * 2.6, ux * s, uy * s,
+                       max(3.4, unit * 0.19))
 
     # ---- nodes
     for i, (_, _, kind) in enumerate(dia.nodes):
         xi, yi = pos(i)
         if kind is ELLIPSIS:
             c.setFillColor(ink)
-            for d in (-2.6, 0.0, 2.6):
-                c.circle(xi + d, yi, 0.62, stroke=0, fill=1)
+            for d in (-3.2, 0.0, 3.2):
+                c.circle(xi + d, yi, 0.8, stroke=0, fill=1)
         else:
             c.setFillColorRGB(1, 1, 1)
             c.circle(xi, yi, r, stroke=1, fill=1)
@@ -231,25 +246,28 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
     c.saveState()
     c.setStrokeColor(twist_ink)
     c.setFillColor(twist_ink)
-    c.setLineWidth(0.8)
+    c.setLineWidth(1.0)
+    c.setLineCap(1)
 
     if dia.cycle is not None:
-        # triality: three arrows carrying each outer node to the next
+        # triality: three arcs of one circle about the branch node, each
+        # carrying an outer node to the next
         ox, oy = pos(dia.centre)
-        ring = dia.cycle
-        for a, b in zip(ring, ring[1:] + ring[:1]):
-            (xa, ya), (xb, yb) = pos(a), pos(b)
-            mx, my = (xa + xb) / 2, (ya + yb) / 2
-            dx, dy = mx - ox, my - oy
-            n = math.hypot(dx, dy) or 1.0
-            kx, ky = mx + dx / n * unit * 0.95, my + dy / n * unit * 0.95
-            sx, sy = _edge(xa, ya, kx, ky, r + 1.6)
-            ex, ey = _edge(xb, yb, kx, ky, r + 2.8)
-            p = c.beginPath()
-            p.moveTo(sx, sy)
-            p.curveTo(kx, ky, kx, ky, ex, ey)
-            c.drawPath(p, stroke=1, fill=0)
-            _arrowhead(c, ex, ey, ex - kx, ey - ky, 3.4)
+        pts = [pos(i) for i in dia.cycle]
+        angs = [math.degrees(math.atan2(py - oy, px - ox)) % 360 for px, py in pts]
+        rad = sum(math.hypot(px - ox, py - oy) for px, py in pts) / 3 + r + 3.0
+        order = sorted(range(3), key=lambda t: angs[t])
+        ah = max(3.6, unit * 0.2)
+        for t in range(3):
+            a0 = angs[order[t]]
+            a1 = angs[order[(t + 1) % 3]]
+            extent = (a1 - a0) % 360
+            pad = 16.0
+            c.arc(ox - rad, oy - rad, ox + rad, oy + rad,
+                  a0 + pad, extent - 2 * pad)
+            a = math.radians(a1 - pad)
+            _arrowhead(c, ox + rad * math.cos(a), oy + rad * math.sin(a),
+                       -math.sin(a), math.cos(a), ah)
         c.restoreState()
         return
 
@@ -261,13 +279,14 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
 
     for i, j in flat:                            # the two tips of a fork
         (xi, yi), (xj, yj) = pos(i), pos(j)
-        mid = (xi + xj) / 2 + unit * 0.75
+        mid = (xi + xj) / 2 + unit * 0.9
+        ah = max(3.4, unit * 0.19)
         p = c.beginPath()
-        p.moveTo(xi + r + 1.2, yi)
-        p.curveTo(mid, yi, mid, yj, xj + r + 1.2, yj)
+        p.moveTo(xi + r + 2.0, yi)
+        p.curveTo(mid, yi, mid, yj, xj + r + 2.0, yj)
         c.drawPath(p, stroke=1, fill=0)
-        _arrowhead(c, xi + r + 1.2, yi, -1, -0.45, 3.0)
-        _arrowhead(c, xj + r + 1.2, yj, -1, 0.45, 3.0)
+        _arrowhead(c, xi + r + 2.0, yi, -1, -0.4, ah)
+        _arrowhead(c, xj + r + 2.0, yj, -1, 0.4, ah)
 
     if over:
         # concentric half ellipses: every pair is exchanged by the same
@@ -279,10 +298,10 @@ def draw(c, dia: Diagram, x: float, y: float, w: float, h: float,
         ca, sa = math.cos(math.radians(15.0)), math.sin(math.radians(15.0))
         for i, j in over:
             a = abs(pos(i)[0] - pos(j)[0]) / 2
-            b = max(arc * a / a_max, r + 2.0)
+            b = max(arc * a / a_max, r + 3.0)
             c.arc(ctr - a, base - b, ctr + a, base + b, start, ang)
             for sgn in (-1, 1):
                 ex, ey = ctr + sgn * a * ca, base + side * b * sa
                 nx, ny = ctr + sgn * a, base
-                _arrowhead(c, ex, ey, nx - ex, ny - ey, 3.2)
+                _arrowhead(c, ex, ey, nx - ex, ny - ey, max(3.4, unit * 0.19))
     c.restoreState()

@@ -33,6 +33,9 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="further q rows past --q-max, comma separated")
     g.add_argument("--sporadic-cols", type=int, default=cfg.sporadic_cols,
                    help="columns of the sporadic block")
+    g.add_argument("--always-factorise", action="store_true",
+                   help="print every prime factorisation, however small it has to "
+                        "be set, instead of falling back to the order formula")
     g.add_argument("--no-alt-names", action="store_true",
                    help="drop the classical name printed above each symbol")
 
@@ -63,6 +66,7 @@ def config_from_args(a: argparse.Namespace) -> PosterConfig:
         block_gap=a.block_gap,
         symbol_size=a.symbol_size, order_size=a.order_size,
         max_order_lines=a.max_order_lines, title=a.title, subtitle=a.subtitle,
+        always_factorise=a.always_factorise,
     )
 
 

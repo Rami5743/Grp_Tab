@@ -27,7 +27,9 @@ LaTeX or other external toolchain is needed.
 * the bottom line is the **prime factorisation of its order**.  A cell that
   carries a parameter shows the generic order formula instead, and so does a
   cell whose factorisation is too long to print — with the defaults that is
-  six cells out of 1060, `E_8(q)` for `q = 23, 25, 27, 29, 31, 32`.  Each of the three lines is set as large as its own box
+  six cells out of 1060, `E_8(q)` for `q = 23, 25, 27, 29, 31, 32`.  Pass
+  `--always-factorise` and those six are printed in full as well, down to
+  4.4 pt;  `out/finite_simple_groups_full_factorisations.pdf` is that version.  Each of the three lines is set as large as its own box
   allows, so the order line grows up to its cap wherever the factorisation is
   short.
 
@@ -86,7 +88,9 @@ the generic-rank block `A_n B_n C_n D_n ²A_n ²D_n`, and a second ellipsis.
 **Above every column is its Dynkin diagram**, turned on its side and hung from
 the band that names the rank, so that a long diagram is limited by the height
 of the band rather than by the width of its column, and diagrams of different
-lengths line up along one edge.  A generic-rank column carries the diagram
+lengths line up along one edge.  The masthead text and the diagrams share that
+strip of page rather than stacking: the text sits on the left, where the ranks
+are small and the diagrams short, and the long diagrams rise beside it.  A generic-rank column carries the diagram
 with an ellipsis in it.
 
 On the Steinberg, Suzuki and Ree columns red arrows mark the automorphism of
@@ -115,6 +119,8 @@ entry in that key means the group is not defined there, or is not simple.
 
 ```bash
 python3 make_poster.py --out out/finite_simple_groups.pdf
+python3 make_poster.py --always-factorise \
+        --out out/finite_simple_groups_full_factorisations.pdf
 python3 make_poster.py --help          # every parameter
 python3 selftest.py                    # check the mathematical content
 ```
@@ -134,6 +140,7 @@ the ones used for `out/finite_simple_groups.pdf`:
 | `--dots-frac` | 0.42 | size of an ellipsis row/column, relative to a cell |
 | `--symbol-size`, `--order-size` | 20, 14 | font size caps;  each line is set as large as its box allows |
 | `--max-order-lines` | 7 | lines the order line may wrap onto |
+| `--always-factorise` | off | print every factorisation, however small it must be set |
 | `--no-alt-names` | off | drop the top line of every cell |
 | `--title`, `--subtitle` | | the masthead text |
 

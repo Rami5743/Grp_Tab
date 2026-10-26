@@ -144,12 +144,16 @@ class PosterConfig:
     axis_w: float = 52.0
     header_h: float = 26.0           # per-column header band
     block_band_h: float = 30.0       # the band naming each rank block
-    dynkin_h: float = 142.0          # the band of Dynkin diagrams, drawn
-                                     # on their side so they can run long
-    title_h: float = 224.0
+    #: padding around the band of Dynkin diagrams;  its height is computed
+    #: from the longest diagram, and the band shares the top of the page with
+    #: the masthead, which only occupies the left of it
+    dynkin_pad: float = 14.0
+    title_h: float = 214.0           # height of the masthead text
     bottom_gap: float = 40.0
 
     show_alt_names: bool = True
+    #: print every prime factorisation, however small it has to be set
+    always_factorise: bool = False
     max_order_lines: int = 7
     symbol_size: float = 20.0
     alt_size: float = 7.4
@@ -341,13 +345,15 @@ def draw_cell(c, cell: G.Cell, x: float, y: float, w: float, h: float,
         text = cell.order
         # a factorisation that will not fit even at the smallest size gives
         # way to the order formula with q substituted in
-        if cell.order_alt and not fits_at(text, MATH, inner, box_h,
-                                          cfg.min_order_size, cfg.order_leading):
+        if (cell.order_alt and not cfg.always_factorise
+                and not fits_at(text, MATH, inner, box_h,
+                                cfg.min_order_size, cfg.order_leading)):
             text = cell.order_alt
         # the floor here is a hard one: the text must never cross into the
         # symbol above it, so it keeps shrinking past the preferred minimum
-        p_ord, _, oh = fitted(text, MATH, INK_SOFT, inner, box_h,
-                              cfg.order_size, 3.4, leading=cfg.order_leading)
+        p_ord, _, oh = fitted(text, MATH, INK_SOFT, inner, box_h, cfg.order_size,
+                              1.8 if cfg.always_factorise else 3.4,
+                              leading=cfg.order_leading)
         draw_para(c, p_ord, x + pad, y + pad + (box_h + oh) / 2, inner, oh)
         c.setStrokeColor(tint(hue, 0.45))
         c.setLineWidth(0.4)
@@ -373,7 +379,8 @@ class Poster:
         self.grid_h = sum(row.height for row in self.rows)
         self.bottom_h = self._bottom_height()
         self.width = cfg.margin * 2 + cfg.axis_w + self.grid_w
-        self.height = (cfg.margin * 2 + cfg.title_h + cfg.block_band_h + cfg.dynkin_h + cfg.header_h
+        self.dynkin_h, self.top_h = self._top_height()
+        self.height = (cfg.margin * 2 + self.top_h + cfg.block_band_h + cfg.header_h
                        + self.grid_h + cfg.bottom_gap + self.bottom_h)
 
     # -- geometry ---------------------------------------------------------
@@ -382,9 +389,36 @@ class Poster:
 
     def row_y(self, j: int) -> float:
         """Bottom edge of row ``j``."""
-        top = (self.height - self.cfg.margin - self.cfg.title_h
-               - self.cfg.block_band_h - self.cfg.dynkin_h - self.cfg.header_h)
+        top = (self.height - self.cfg.margin - self.top_h
+               - self.cfg.block_band_h - self.cfg.header_h)
         return top - sum(r.height for r in self.rows[:j + 1])
+
+    def masthead_width(self) -> float:
+        """How far right the lower row of the masthead reaches."""
+        return (self.cfg.cell_w + 6) * 2 + 215 + 258 + 4 * (190 + 16) + 40
+
+    def _diagram_length(self, col: Column) -> float:
+        if col.family is None:
+            return 0.0
+        dia = dynkin.diagram(col.family.key, col.rank if col.family.ranked else None)
+        return 0.0 if dia is None else dynkin.length(dia, 10_000, col.width)
+
+    def _top_height(self) -> tuple[float, float]:
+        """Height of the diagram band, and of the whole top of the page.
+
+        The masthead text sits on the left and the long diagrams on the right,
+        so the two share the same strip of page instead of stacking: the top
+        is only as tall as the taller of (text + the diagrams under it) and
+        (the longest diagram anywhere).
+        """
+        cfg = self.cfg
+        reach = cfg.margin + cfg.axis_w + self.masthead_width()
+        under_text = [self._diagram_length(col) for i, col in enumerate(self.cols)
+                      if self.col_x(i) < reach]
+        every = [self._diagram_length(col) for col in self.cols]
+        band = max(every) + cfg.dynkin_pad
+        top = max(cfg.title_h + 14 + max(under_text, default=0.0), band)
+        return band, top
 
     def _bottom_height(self) -> float:
         cfg = self.cfg
@@ -510,12 +544,11 @@ class Poster:
     # ...................................................................
     def _draw_headers(self, c) -> None:
         cfg = self.cfg
-        band_top = self.height - cfg.margin - cfg.title_h
-        # the diagrams sit above the band naming the rank, turned on their
+        # the diagrams hang from the band naming the rank, turned on their
         # side, so a long one is limited by the height of the band and not by
         # the width of its column
-        dyn_y = band_top - cfg.dynkin_h
-        band_y = dyn_y - cfg.block_band_h
+        band_y = self.height - cfg.margin - self.top_h - cfg.block_band_h
+        dyn_y = band_y + cfg.block_band_h
         hdr_y = band_y - cfg.header_h
 
         for i, col in enumerate(self.cols):
@@ -538,9 +571,9 @@ class Poster:
                                          col.rank if col.family.ranked else None)
                     if dia is not None:
                         c.saveState()
-                        c.translate(x, dyn_y + cfg.dynkin_h)
+                        c.translate(x, dyn_y + self.dynkin_h)
                         c.rotate(-90)
-                        dynkin.draw(c, dia, 3, 0, cfg.dynkin_h - 6, col.width,
+                        dynkin.draw(c, dia, 3, 0, self.dynkin_h - 6, col.width,
                                     INK, HexColor(cfg.twist_hue), x_align=1.0)
                         c.restoreState()
 
@@ -608,7 +641,7 @@ class Poster:
         "heuristic of Tits\u2019.  Each group in that row is printed under its own name, "
         "A<sub>n+1</sub>.",
         "\u2022  A cell carrying a parameter shows the generic order formula in place of a "
-        "prime factorisation, and so does a cell whose factorisation is too long to print.",
+        "prime factorisation.",
         "\u2022  C<sub>n</sub>(q) \u2245 B<sub>n</sub>(q) for q even, so only the odd-q cells "
         "of the C columns are printed.",
         "\u2022  <super>2</super>B<sub>2</sub>(q) and <super>2</super>F<sub>4</sub>(q) exist for "
@@ -627,6 +660,17 @@ class Poster:
         "field, A<sub>n</sub>(q) is linear and C<sub>n</sub>(q) symplectic \u2014 the argument "
         "tells them apart.",
     ]
+
+    def notes(self) -> list[str]:
+        out = list(self.NOTES)
+        if not self.cfg.always_factorise:
+            tail = "prime factorisation."
+            for i, note in enumerate(out):
+                if note.endswith(tail):
+                    out[i] = note[:-1] + (",  and so does a cell whose factorisation "
+                                          "is too long to print.")
+                    break
+        return out
 
     def _draw_bottom(self, c) -> None:
         cfg = self.cfg
@@ -674,11 +718,12 @@ class Poster:
         c.drawString(x, top - 14, "NOTES")
         right = cfg.margin + cfg.axis_w + self.grid_w
         n_cols = 3
-        per_col = -(-len(self.NOTES) // n_cols)
+        notes = self.notes()
+        per_col = -(-len(notes) // n_cols)
         col_w = max(380.0, (right - x - 26.0 * (n_cols - 1)) / n_cols)
-        for k in range(0, len(self.NOTES), per_col):
+        for k in range(0, len(notes), per_col):
             yy = top - 22
-            for note in self.NOTES[k:k + per_col]:
+            for note in notes[k:k + per_col]:
                 p, _, ph = fitted(note, MATH, INK_SOFT, col_w, 60, 8.6, 6.5, align=TA_LEFT)
                 draw_para(c, p, x, yy, col_w, ph)
                 yy -= ph + 4
