@@ -1,19 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="טבלה מחזורית של חבורות">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="תא בטבלה">
   <rect width="64" height="64" rx="12" fill="#121212"/>
-  <g>
-    <rect x="9"  y="13" width="14" height="16" rx="3" fill="#eb6834"/>
-    <rect x="25" y="13" width="14" height="16" rx="3" fill="#2a78d6"/>
-    <rect x="41" y="13" width="14" height="16" rx="3" fill="#1baf7a"/>
-    <rect x="9"  y="33" width="14" height="16" rx="3" fill="#e87ba4"/>
-    <rect x="25" y="33" width="14" height="16" rx="3" fill="#eda100"/>
-    <rect x="41" y="33" width="14" height="16" rx="3" fill="#6250d6"/>
-  </g>
-  <g fill="#121212" opacity="0.28">
-    <rect x="9"  y="25" width="14" height="4"/>
-    <rect x="25" y="25" width="14" height="4"/>
-    <rect x="41" y="25" width="14" height="4"/>
-    <rect x="9"  y="45" width="14" height="4"/>
-    <rect x="25" y="45" width="14" height="4"/>
-    <rect x="41" y="45" width="14" height="4"/>
+  <rect x="11" y="9" width="42" height="46" rx="5" fill="#eaf1fb" stroke="#2a78d6" stroke-width="2"/>
+  <rect x="11" y="9" width="42" height="6" rx="3" fill="#2a78d6"/>
+  <g fill="#121212"><path transform="translate(16.86 37.00) scale(0.02899 -0.02899)" d="M690 25V0H366V25Q387 28 398 28Q446 31 446.0 61.0Q446 91 400 197H175L160 158Q131 83 131 66Q131 47 150.0 37.5Q169 28 213 25V0H10V25Q46 32 62.5 52.0Q79 72 108 142L330 690H358L581 164Q618 76 637.5 50.5Q657 25 686 25ZM190 236H385L284 479Z"/><path transform="translate(38.40 38.00) scale(0.01453 -0.01453)" d="M31 484Q107 688 251 688Q332 688 384.0 636.5Q436 585 436 505Q436 395 322 287L160 133H311Q388 133 410.0 145.0Q432 157 454 211H478L433 0H17V23Q188 205 244.0 291.5Q300 378 300 447Q300 498 267.0 536.0Q234 574 181 574Q104 574 59 484Z"/></g>
+  <g fill="#55534e">
+    <rect x="18" y="42" width="28" height="3" rx="1.5"/>
+    <rect x="22" y="48" width="20" height="3" rx="1.5"/>
   </g>
 </svg>
